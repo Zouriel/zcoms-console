@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zcoms console</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>zcoms console</h1>
+    <div id="banner" class="banner hidden"></div>
+    <button id="logout" class="hidden">log out</button>
+  </header>
+
+  <!-- Login / first-run set-password gate -->
+  <section id="login" class="hidden card">
+    <h2 id="login-title">Log in</h2>
+    <p id="login-hint" class="muted"></p>
+    <form id="login-form">
+      <input id="login-pw" type="password" placeholder="password" autocomplete="current-password">
+      <button type="submit">Continue</button>
+    </form>
+    <p id="login-error" class="error"></p>
+  </section>
+
+  <!-- Main app -->
+  <main id="app" class="hidden">
+    <nav id="tabs">
+      <button data-tab="contacts" class="active">Contacts</button>
+      <button data-tab="workspaces">Workspaces</button>
+      <button data-tab="sessions">Sessions</button>
+      <button data-tab="personas">Personas</button>
+      <button data-tab="allowlist">Allowlist</button>
+      <button data-tab="settings">Settings</button>
+    </nav>
+    <div id="view"></div>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

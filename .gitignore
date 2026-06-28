@@ -1,0 +1,7 @@
+# Built binary
+/zcoms-console
+
+# Never commit any local store databases (the console must never touch them anyway)
+*.db
+*.db-shm
+*.db-wal

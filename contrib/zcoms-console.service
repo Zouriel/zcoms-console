@@ -1,0 +1,13 @@
+[Unit]
+Description=zcoms console (owner-only local web UI)
+After=network-online.target zcoms-daemon.service
+Requires=zcoms-daemon.service
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/zcoms-console
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
