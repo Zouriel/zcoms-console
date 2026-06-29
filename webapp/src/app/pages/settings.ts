@@ -42,8 +42,8 @@ import { UI } from '../core/ui';
           <tbody>
             @for (k of keys(); track k) {
               <tr>
-                <td>{{ k }}</td>
-                <td><ui-input [(ngModel)]="map[k]"></ui-input></td>
+                <td class="kcol">{{ k }}</td>
+                <td class="vcol"><ui-input class="vfull" [(ngModel)]="map[k]"></ui-input></td>
                 <td><ui-button variant="secondary" size="sm" (click)="setKey(k, map[k])">Save</ui-button></td>
               </tr>
             } @empty { <tr><td colspan="3" class="empty">No settings.</td></tr> }
@@ -52,7 +52,14 @@ import { UI } from '../core/ui';
       }
     </ui-card>
   `,
-  styles: [`.cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ui-space-4); } @media (max-width: 900px){ .cols { grid-template-columns: 1fr; } }`],
+  styles: [`
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ui-space-4); }
+    @media (max-width: 900px){ .cols { grid-template-columns: 1fr; } }
+    /* Let the value box take all remaining width and stay usable on mobile. */
+    .vcol { width: 100%; }
+    .kcol { white-space: nowrap; }
+    ui-input.vfull { display: block; width: 100%; min-width: 14rem; }
+  `],
 })
 export class SettingsPage {
   private api = inject(Api);

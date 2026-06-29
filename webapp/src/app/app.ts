@@ -11,26 +11,22 @@ import { LoginComponent } from './auth/login';
   template: `
     @if (ready()) {
       @if (authed()) {
-        <div class="shell" [class.nav-open]="navOpen()">
-          <div class="backdrop" (click)="navOpen.set(false)"></div>
-          <aside class="side">
+        <ui-sidebar-layout [breakpoint]="860" [(open)]="navOpen">
+          <div sidebar>
             <div class="brand">
               <ui-text variant="h4">zcoms</ui-text>
               <ui-text variant="caption" class="muted">console</ui-text>
             </div>
             <ui-side-nav [groups]="navGroups" [active]="active()" (navigate)="go($event)"></ui-side-nav>
-          </aside>
-          <div class="main">
-            <header class="topbar">
-              <ui-button class="hamburger" variant="ghost" size="sm" (click)="navOpen.set(!navOpen())">☰</ui-button>
-              <ui-text variant="h3">{{ activeLabel() }}</ui-text>
-              <span class="spacer"></span>
-              @if (!agentAvailable()) { <ui-badge tone="warning">agent offline</ui-badge> }
-              <ui-button variant="ghost" size="sm" (click)="logout()">Log out</ui-button>
-            </header>
-            <main class="content"><router-outlet></router-outlet></main>
           </div>
-        </div>
+          <ng-container header>
+            <ui-text variant="h3">{{ activeLabel() }}</ui-text>
+            <span class="spacer"></span>
+            @if (!agentAvailable()) { <ui-badge tone="warning">agent offline</ui-badge> }
+            <ui-button variant="ghost" size="sm" (click)="logout()">Log out</ui-button>
+          </ng-container>
+          <router-outlet></router-outlet>
+        </ui-sidebar-layout>
       } @else {
         <app-login (done)="refresh()"></app-login>
       }
@@ -38,43 +34,11 @@ import { LoginComponent } from './auth/login';
     <ui-toast-host></ui-toast-host>
   `,
   styles: [`
-    .shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
-    .side {
-      background: var(--ui-color-surface);
-      border-right: 1px solid var(--ui-color-border);
-      padding: var(--ui-space-4) var(--ui-space-3);
-      display: flex; flex-direction: column; gap: var(--ui-space-4);
-    }
-    .brand { padding: 0 var(--ui-space-2); display: flex; flex-direction: column; gap: 2px; }
-    .main { display: flex; flex-direction: column; min-width: 0; }
-    .topbar {
-      display: flex; align-items: center; gap: var(--ui-space-3);
-      padding: var(--ui-space-4) var(--ui-space-6);
-      border-bottom: 1px solid var(--ui-color-border);
-      background: var(--ui-color-bg);
-      position: sticky; top: 0; z-index: 5;
-    }
-    .content { padding: var(--ui-space-6); min-width: 0; }
-    .hamburger { display: none; }
-    .backdrop { display: none; }
-
-    /* Mobile: the sidebar becomes an off-canvas drawer toggled by the hamburger. */
-    @media (max-width: 860px) {
-      .shell { grid-template-columns: 1fr; }
-      .side {
-        position: fixed; top: 0; left: 0; bottom: 0; width: 264px; max-width: 84vw;
-        z-index: 30; transform: translateX(-100%);
-        transition: transform var(--ui-motion-base, 200ms) var(--ui-ease-standard, ease);
-        overflow-y: auto;
-      }
-      .shell.nav-open .side { transform: translateX(0); }
-      .shell.nav-open .backdrop {
-        display: block; position: fixed; inset: 0; z-index: 20;
-        background: rgba(0, 0, 0, 0.55);
-      }
-      .hamburger { display: inline-flex; }
-      .content { padding: var(--ui-space-4); }
-      .topbar { padding: var(--ui-space-3) var(--ui-space-4); }
+    /* The shell (desktop sidebar ↔ mobile drawer + hamburger) is the library's
+       ui-sidebar-layout now; only the brand block is app-specific. */
+    .brand {
+      padding: 0 var(--ui-space-2) var(--ui-space-4);
+      display: flex; flex-direction: column; gap: 2px;
     }
   `],
 })

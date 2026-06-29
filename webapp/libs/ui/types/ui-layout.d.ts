@@ -79,4 +79,41 @@ declare class UiSplitter implements OnDestroy {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<UiSplitter, "ui-splitter", never, { "orientation": { "alias": "orientation"; "required": false; "isSignal": true; }; }, {}, never, ["[split-a]", "[split-b]"], true, never>;
 }
 
-export { UiAspectRatio, UiContainer, UiGrid, UiScrollArea, UiSpacer, UiSplitter, UiStack };
+/**
+ * `ui-sidebar-layout` — responsive application shell. A fixed sidebar beside a
+ * scrolling main column on desktop; below `breakpoint` the sidebar becomes an
+ * off-canvas drawer toggled by a built-in hamburger, over a dimmed backdrop.
+ *
+ * Project the nav into `[sidebar]`, the top-bar content into `[header]`, and the
+ * page into the default slot:
+ *
+ *   <ui-sidebar-layout [breakpoint]="860">
+ *     <my-nav sidebar></my-nav>
+ *     <h1 header>Page title</h1>
+ *     <router-outlet></router-outlet>
+ *   </ui-sidebar-layout>
+ *
+ * Bind `[(open)]` to drive the mobile drawer yourself (e.g. close it on
+ * navigation), or call `close()`. The breakpoint is driven by `matchMedia`, not
+ * a hardcoded CSS `@media`, so it stays configurable per app.
+ */
+declare class UiSidebarLayout {
+    /** Max viewport width (px) at which the sidebar collapses into a drawer. */
+    breakpoint: _angular_core.InputSignal<number>;
+    /** Sidebar width (any CSS length). */
+    sidebarWidth: _angular_core.InputSignal<string>;
+    /** Two-way: whether the mobile drawer is open. Ignored above the breakpoint. */
+    open: _angular_core.ModelSignal<boolean>;
+    /** True while below the breakpoint (drawer mode). */
+    protected compact: _angular_core.WritableSignal<boolean>;
+    private platformId;
+    constructor();
+    /** Toggle the mobile drawer. */
+    toggle(): void;
+    /** Close the mobile drawer (call on navigation). */
+    close(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<UiSidebarLayout, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<UiSidebarLayout, "ui-sidebar-layout", never, { "breakpoint": { "alias": "breakpoint"; "required": false; "isSignal": true; }; "sidebarWidth": { "alias": "sidebarWidth"; "required": false; "isSignal": true; }; "open": { "alias": "open"; "required": false; "isSignal": true; }; }, { "open": "openChange"; }, never, ["[sidebar]", "[header]", "*"], true, never>;
+}
+
+export { UiAspectRatio, UiContainer, UiGrid, UiScrollArea, UiSidebarLayout, UiSpacer, UiSplitter, UiStack };

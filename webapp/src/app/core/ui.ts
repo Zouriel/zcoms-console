@@ -11,7 +11,7 @@ import { UiText } from 'ui/text';
 import { UiBadge, UiChip } from 'ui/badge';
 import { UiModal, UiToastHost } from 'ui/dialog';
 import { UiAlert } from 'ui/alert';
-import { UiStack, UiGrid, UiContainer } from 'ui/layout';
+import { UiStack, UiGrid, UiContainer, UiSidebarLayout } from 'ui/layout';
 import { UiSideNav } from 'ui/navigation';
 import { UiSpinner } from 'ui/spinner';
 
@@ -19,5 +19,5 @@ export const UI = [
   UiButton, UiIconButton, UiCard, UiTable,
   UiInput, UiSelect, UiTextarea, UiFormField, UiSwitch, UiPasswordInput, UiSearchInput,
   UiText, UiBadge, UiChip, UiModal, UiToastHost, UiAlert,
-  UiStack, UiGrid, UiContainer, UiSideNav, UiSpinner,
+  UiStack, UiGrid, UiContainer, UiSidebarLayout, UiSideNav, UiSpinner,
 ];
