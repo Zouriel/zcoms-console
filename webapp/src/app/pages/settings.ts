@@ -43,8 +43,16 @@ import { UI } from '../core/ui';
             @for (k of keys(); track k) {
               <tr>
                 <td class="kcol">{{ k }}</td>
-                <td class="vcol"><ui-input class="vfull" [(ngModel)]="map[k]"></ui-input></td>
-                <td><ui-button variant="secondary" size="sm" (click)="setKey(k, map[k])">Save</ui-button></td>
+                @if (isBool(map[k])) {
+                  <td class="vcol">
+                    <ui-switch [ngModel]="map[k].toLowerCase() === 'true'"
+                               (ngModelChange)="setKey(k, $event ? 'true' : 'false')"></ui-switch>
+                  </td>
+                  <td></td>
+                } @else {
+                  <td class="vcol"><ui-input class="vfull" [(ngModel)]="map[k]"></ui-input></td>
+                  <td><ui-button variant="secondary" size="sm" (click)="setKey(k, map[k])">Save</ui-button></td>
+                }
               </tr>
             } @empty { <tr><td colspan="3" class="empty">No settings.</td></tr> }
           </tbody>
@@ -72,6 +80,12 @@ export class SettingsPage {
   newVal = '';
 
   constructor() { this.load(); }
+
+  // A setting renders as a toggle when its value is a boolean string.
+  isBool(v: string | undefined): boolean {
+    const s = (v ?? '').toLowerCase();
+    return s === 'true' || s === 'false';
+  }
 
   async load() {
     this.loading.set(true);
