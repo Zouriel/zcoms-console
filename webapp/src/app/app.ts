@@ -63,6 +63,7 @@ export class App {
         { label: 'Personas', value: 'personas' },
         { label: 'Allowlist', value: 'allowlist' },
         { label: 'Connectors', value: 'connectors' },
+        { label: 'Triage', value: 'triage' },
         { label: 'Commerce', value: 'commerce' },
         { label: 'Settings', value: 'settings' },
       ],

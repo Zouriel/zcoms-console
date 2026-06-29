@@ -8,6 +8,7 @@ export const routes: Routes = [
   { path: 'personas', loadComponent: () => import('./pages/personas').then((m) => m.PersonasPage) },
   { path: 'allowlist', loadComponent: () => import('./pages/allowlist').then((m) => m.AllowlistPage) },
   { path: 'connectors', loadComponent: () => import('./pages/connectors').then((m) => m.ConnectorsPage) },
+  { path: 'triage', loadComponent: () => import('./pages/triage').then((m) => m.TriagePage) },
   { path: 'commerce', loadComponent: () => import('./pages/commerce').then((m) => m.CommercePage) },
   { path: 'settings', loadComponent: () => import('./pages/settings').then((m) => m.SettingsPage) },
   { path: '**', redirectTo: 'contacts' },
