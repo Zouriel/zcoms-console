@@ -69,8 +69,6 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /api/contacts", auth(s.handleContactCreate))
 	mux.HandleFunc("PUT /api/contacts/{id}", auth(s.handleContactUpdate))
 	mux.HandleFunc("DELETE /api/contacts/{id}", auth(s.handleContactDelete))
-	mux.HandleFunc("POST /api/contacts/{id}/handles", auth(s.handleHandleAdd))
-	mux.HandleFunc("DELETE /api/handles", auth(s.handleHandleRemove))
 
 	// Workspaces (agent client) — edit cap/pin/ignore; NO create/delete.
 	mux.HandleFunc("GET /api/workspaces", auth(s.handleWorkspacesList))

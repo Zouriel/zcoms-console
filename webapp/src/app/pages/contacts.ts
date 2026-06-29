@@ -4,69 +4,77 @@ import { UiToastService } from 'ui/dialog';
 import { Api } from '../core/api';
 import { UI } from '../core/ui';
 
-interface Handle { platform: string; handle: string; }
-interface Contact { id: number; name: string; note?: string; handles?: Handle[]; }
+interface Contact {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  telegram?: string;
+  whatsapp?: string;
+  discord?: string;
+  viber?: string;
+  note?: string;
+}
+const blank = (): Contact => ({ id: 0, name: '', phone: '', email: '', telegram: '', whatsapp: '', discord: '', viber: '', note: '' });
 
 @Component({
   selector: 'app-contacts',
   imports: [FormsModule, ...UI],
   template: `
     <div class="page-head">
-      <ui-text variant="caption" class="muted">addressing directory — every tier resolves "message &lt;name&gt;" through here</ui-text>
+      <ui-text variant="caption" class="muted">addressing directory — a phone reaches Telegram/WhatsApp/Viber; Discord needs its own id</ui-text>
       <span class="spacer"></span>
-      <ui-button variant="primary" (click)="openAdd()">Add contact</ui-button>
+      <ui-button variant="primary" (click)="openNew()">Add contact</ui-button>
     </div>
 
     <ui-card padding="md">
-      @if (loading()) {
-        <ui-spinner></ui-spinner>
-      } @else {
+      @if (loading()) { <ui-spinner></ui-spinner> } @else {
         <div class="tbl-scroll"><table class="tbl">
-          <thead>
-            <tr><th>Name</th><th>Note</th><th>Handles</th><th style="width:1%"></th></tr>
-          </thead>
+          <thead><tr><th>Name</th><th>Phone</th><th>Telegram</th><th>Email</th><th style="width:1%"></th></tr></thead>
           <tbody>
             @for (c of contacts(); track c.id) {
               <tr>
-                <td><ui-input [(ngModel)]="c.name" placeholder="name"></ui-input></td>
-                <td><ui-input [(ngModel)]="c.note" placeholder="note"></ui-input></td>
-                <td>
-                  <div class="row">
-                    @for (h of c.handles || []; track h.platform + h.handle) {
-                      <ui-chip tone="neutral">{{ h.platform }}:{{ h.handle }}
-                        <button class="x" (click)="removeHandle(h)">×</button>
-                      </ui-chip>
-                    }
-                  </div>
-                  <div class="row" style="margin-top:6px">
-                    <input class="mini" [(ngModel)]="getDraft(c.id).platform" placeholder="platform">
-                    <input class="mini" [(ngModel)]="getDraft(c.id).handle" placeholder="handle">
-                    <ui-button variant="ghost" size="sm" (click)="addHandle(c)">+ handle</ui-button>
-                  </div>
-                </td>
+                <td>{{ c.name }}</td>
+                <td class="muted">{{ c.phone || '—' }}</td>
+                <td class="muted">{{ c.telegram || '—' }}</td>
+                <td class="muted">{{ c.email || '—' }}</td>
                 <td>
                   <div class="row-actions">
-                    <ui-button variant="secondary" size="sm" (click)="save(c)">Save</ui-button>
+                    <ui-button variant="secondary" size="sm" (click)="openEdit(c)">Edit</ui-button>
                     <ui-button variant="destructive" size="sm" (click)="confirmDelete(c)">Delete</ui-button>
                   </div>
                 </td>
               </tr>
-            } @empty {
-              <tr><td colspan="4" class="empty">No contacts yet.</td></tr>
-            }
+            } @empty { <tr><td colspan="5" class="empty">No contacts yet.</td></tr> }
           </tbody>
         </table></div>
       }
     </ui-card>
 
-    <ui-modal [(open)]="adding" title="New contact">
-      <div class="stack">
-        <ui-form-field label="Name"><ui-input [(ngModel)]="newName" placeholder="e.g. Ali"></ui-input></ui-form-field>
-        <ui-form-field label="Note"><ui-input [(ngModel)]="newNote" placeholder="optional"></ui-input></ui-form-field>
+    <ui-modal [(open)]="editing" [title]="form.id ? 'Edit contact' : 'New contact'">
+      <div class="grid">
+        <ui-form-field label="Name"><ui-input class="f" [(ngModel)]="form.name" placeholder="e.g. Ali"></ui-input></ui-form-field>
+        <ui-form-field label="Mobile number" hint="reaches Telegram / WhatsApp / Viber">
+          <ui-input class="f" [(ngModel)]="form.phone" placeholder="+960 …"></ui-input>
+        </ui-form-field>
+        <ui-form-field label="Email"><ui-input class="f" type="email" [(ngModel)]="form.email" placeholder="name@example.com"></ui-input></ui-form-field>
+        <ui-form-field label="Telegram" hint="@handle — else the phone is used">
+          <ui-input class="f" [(ngModel)]="form.telegram" placeholder="@handle"></ui-input>
+        </ui-form-field>
+        <ui-form-field label="WhatsApp" hint="id/number — else the phone is used">
+          <ui-input class="f" [(ngModel)]="form.whatsapp" placeholder="defaults to phone"></ui-input>
+        </ui-form-field>
+        <ui-form-field label="Discord" hint="needs its own id — no phone fallback (not active yet)">
+          <ui-input class="f" [(ngModel)]="form.discord" placeholder="discord id"></ui-input>
+        </ui-form-field>
+        <ui-form-field label="Viber" hint="id — else the phone is used (not active yet)">
+          <ui-input class="f" [(ngModel)]="form.viber" placeholder="defaults to phone"></ui-input>
+        </ui-form-field>
+        <ui-form-field label="Note" class="span2"><ui-input class="f" [(ngModel)]="form.note" placeholder="optional"></ui-input></ui-form-field>
       </div>
       <div modal-footer class="row-actions">
-        <ui-button variant="ghost" (click)="adding.set(false)">Cancel</ui-button>
-        <ui-button variant="primary" (click)="create()">Create</ui-button>
+        <ui-button variant="ghost" (click)="editing.set(false)">Cancel</ui-button>
+        <ui-button variant="primary" (click)="save()">{{ form.id ? 'Save' : 'Create' }}</ui-button>
       </div>
     </ui-modal>
 
@@ -79,9 +87,10 @@ interface Contact { id: number; name: string; note?: string; handles?: Handle[];
     </ui-modal>
   `,
   styles: [`
-    .x { background: none; border: 0; color: var(--ui-color-text-muted); cursor: pointer; font-size: 14px; padding: 0 0 0 4px; }
-    .mini { background: var(--ui-color-bg); color: var(--ui-color-text); border: 1px solid var(--ui-color-border);
-            border-radius: var(--ui-radius); padding: 4px 8px; font: inherit; width: 8rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ui-space-3); }
+    .span2 { grid-column: 1 / -1; }
+    ui-input.f { display: block; width: 100%; }
+    @media (max-width: 620px) { .grid { grid-template-columns: 1fr; } }
   `],
 })
 export class ContactsPage {
@@ -90,19 +99,12 @@ export class ContactsPage {
 
   contacts = signal<Contact[]>([]);
   loading = signal(true);
-  adding = signal(false);
+  editing = signal(false);
   deleting = signal(false);
   target = signal<Contact | null>(null);
-  newName = '';
-  newNote = '';
-  draft: Record<number, Handle> = {};
+  form: Contact = blank();
 
   constructor() { this.load(); }
-
-  getDraft(id: number): Handle {
-    if (!this.draft[id]) this.draft[id] = { platform: '', handle: '' };
-    return this.draft[id];
-  }
 
   async load() {
     this.loading.set(true);
@@ -111,41 +113,25 @@ export class ContactsPage {
     finally { this.loading.set(false); }
   }
 
-  openAdd() { this.newName = ''; this.newNote = ''; this.adding.set(true); }
+  openNew() { this.form = blank(); this.editing.set(true); }
+  openEdit(c: Contact) { this.form = { ...blank(), ...c }; this.editing.set(true); }
 
-  async create() {
-    if (!this.newName.trim()) return;
+  async save() {
+    if (!this.form.name.trim()) { this.toast.warning('Name is required'); return; }
     try {
-      await this.api.post('/api/contacts', { name: this.newName, note: this.newNote });
-      this.adding.set(false);
-      this.toast.success('Contact added');
-      this.load();
-    } catch (e: any) { this.toast.danger(e.message, 'Create failed'); }
-  }
-
-  async save(c: Contact) {
-    try { await this.api.put('/api/contacts/' + c.id, { name: c.name, note: c.note }); this.toast.success('Saved'); }
-    catch (e: any) { this.toast.danger(e.message, 'Save failed'); }
+      if (this.form.id) await this.api.put('/api/contacts/' + this.form.id, this.form);
+      else await this.api.post('/api/contacts', this.form);
+      this.editing.set(false);
+      this.toast.success('Saved');
+      await this.load();
+    } catch (e: any) { this.toast.danger(e.message, 'Save failed'); }
   }
 
   confirmDelete(c: Contact) { this.target.set(c); this.deleting.set(true); }
-
   async doDelete() {
     const c = this.target();
     if (!c) return;
-    try { await this.api.del('/api/contacts/' + c.id); this.deleting.set(false); this.toast.success('Deleted'); this.load(); }
+    try { await this.api.del('/api/contacts/' + c.id); this.deleting.set(false); this.toast.success('Deleted'); await this.load(); }
     catch (e: any) { this.toast.danger(e.message, 'Delete failed'); }
-  }
-
-  async addHandle(c: Contact) {
-    const d = this.getDraft(c.id);
-    if (!d.platform || !d.handle) return;
-    try { await this.api.post(`/api/contacts/${c.id}/handles`, { platform: d.platform, handle: d.handle }); this.draft[c.id] = { platform: '', handle: '' }; this.load(); }
-    catch (e: any) { this.toast.danger(e.message, 'Add handle failed'); }
-  }
-
-  async removeHandle(h: Handle) {
-    try { await this.api.del('/api/handles', { platform: h.platform, handle: h.handle }); this.load(); }
-    catch (e: any) { this.toast.danger(e.message, 'Remove failed'); }
   }
 }

@@ -54,19 +54,17 @@ func (s *Server) handleContactsList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleContactCreate(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Name string `json:"name"`
-		Note string `json:"note"`
-	}
-	if !decode(w, r, &body) {
+	var c client.Contact
+	if !decode(w, r, &c) {
 		return
 	}
-	c, err := s.comms.CreateContact(client.Contact{Name: body.Name, Note: body.Note})
+	c.ID = 0
+	created, err := s.comms.CreateContact(c)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, c)
+	writeJSON(w, http.StatusOK, created)
 }
 
 func (s *Server) handleContactUpdate(w http.ResponseWriter, r *http.Request) {
@@ -74,14 +72,12 @@ func (s *Server) handleContactUpdate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var body struct {
-		Name string `json:"name"`
-		Note string `json:"note"`
-	}
-	if !decode(w, r, &body) {
+	var c client.Contact
+	if !decode(w, r, &c) {
 		return
 	}
-	if err := s.comms.UpdateContact(id, body.Name, body.Note); err != nil {
+	c.ID = id // the path wins over any id in the body
+	if err := s.comms.UpdateContact(c); err != nil {
 		writeErr(w, http.StatusBadGateway, err)
 		return
 	}
@@ -94,41 +90,6 @@ func (s *Server) handleContactDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.comms.DeleteContact(id); err != nil {
-		writeErr(w, http.StatusBadGateway, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
-}
-
-func (s *Server) handleHandleAdd(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r, "id")
-	if !ok {
-		return
-	}
-	var body struct {
-		Platform string `json:"platform"`
-		Handle   string `json:"handle"`
-	}
-	if !decode(w, r, &body) {
-		return
-	}
-	if err := s.comms.AddHandle(id, body.Platform, body.Handle); err != nil {
-		writeErr(w, http.StatusBadGateway, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
-}
-
-func (s *Server) handleHandleRemove(w http.ResponseWriter, r *http.Request) {
-	// RemoveHandle keys on (platform, handle), not an id.
-	var body struct {
-		Platform string `json:"platform"`
-		Handle   string `json:"handle"`
-	}
-	if !decode(w, r, &body) {
-		return
-	}
-	if err := s.comms.RemoveHandle(body.Platform, body.Handle); err != nil {
 		writeErr(w, http.StatusBadGateway, err)
 		return
 	}
