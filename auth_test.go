@@ -3,38 +3,53 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-// newTestServer builds a Server with a fixed secret (no clients needed for the
-// session/cookie machinery, which never touches comms/agent).
-func newTestServer(t *testing.T) *Server {
-	t.Helper()
-	return newServer(nil, nil)
+// testServer builds a Server with a fixed in-memory secret (no clients needed —
+// the session/cookie machinery never touches comms/agent, and we avoid touching
+// the on-disk secret file).
+func testServer(secret string) *Server { return &Server{secret: []byte(secret)} }
+
+func reqWithCookie(tok string) *http.Request {
+	req := httptest.NewRequest(http.MethodGet, "/api/contacts", nil)
+	req.AddCookie(&http.Cookie{Name: cookieName, Value: tok})
+	return req
 }
 
-func TestTokenSignRoundtrip(t *testing.T) {
-	s := newTestServer(t)
-	tok := s.signToken("abc123")
-	id, ok := s.verifyToken(tok)
-	if !ok || id != "abc123" {
-		t.Fatalf("roundtrip failed: id=%q ok=%v", id, ok)
-	}
+func TestStatelessSession(t *testing.T) {
+	s := testServer("secret-A-aaaaaaaaaaaaaaaaaaaaaaaa")
+	tok := s.newSession()
 
-	// Tampering must fail verification.
-	if _, ok := s.verifyToken(tok + "ff"); ok {
+	if !s.validSession(reqWithCookie(tok)) {
+		t.Fatal("fresh session rejected")
+	}
+	if s.validSession(reqWithCookie(tok + "ff")) {
 		t.Fatal("tampered token accepted")
 	}
-	if _, ok := s.verifyToken("garbage"); ok {
+	if s.validSession(reqWithCookie("garbage")) {
 		t.Fatal("malformed token accepted")
 	}
 
-	// A second server with a different secret must reject the token.
-	other := newTestServer(t)
-	if _, ok := other.verifyToken(tok); ok {
-		t.Fatal("token accepted across servers (secret not enforced)")
+	// A different secret must reject the token (signature enforced).
+	if testServer("secret-B-bbbbbbbbbbbbbbbbbbbbbbbb").validSession(reqWithCookie(tok)) {
+		t.Fatal("token accepted across secrets")
+	}
+
+	// Survives a "restart": a fresh Server with the SAME (persisted) secret still
+	// accepts the existing cookie — the whole point of the change.
+	if !testServer("secret-A-aaaaaaaaaaaaaaaaaaaaaaaa").validSession(reqWithCookie(tok)) {
+		t.Fatal("token rejected after restart with the same secret")
+	}
+
+	// An expired token is rejected.
+	expired := s.signToken("v1:" + strconv.FormatInt(time.Now().Add(-time.Hour).Unix(), 10))
+	if s.validSession(reqWithCookie(expired)) {
+		t.Fatal("expired token accepted")
 	}
 }
 
@@ -52,7 +67,7 @@ func TestBcryptRoundtrip(t *testing.T) {
 }
 
 func TestRequireAuthRejectsAnonymous(t *testing.T) {
-	s := newTestServer(t)
+	s := testServer("secret-A-aaaaaaaaaaaaaaaaaaaaaaaa")
 	called := false
 	h := s.requireAuth(func(w http.ResponseWriter, r *http.Request) { called = true })
 
@@ -67,16 +82,12 @@ func TestRequireAuthRejectsAnonymous(t *testing.T) {
 }
 
 func TestRequireAuthAcceptsValidSession(t *testing.T) {
-	s := newTestServer(t)
-	cookie := s.newSession()
-
+	s := testServer("secret-A-aaaaaaaaaaaaaaaaaaaaaaaa")
 	called := false
 	h := s.requireAuth(func(w http.ResponseWriter, r *http.Request) { called = true })
 
-	req := httptest.NewRequest(http.MethodGet, "/api/contacts", nil)
-	req.AddCookie(&http.Cookie{Name: cookieName, Value: cookie})
 	rec := httptest.NewRecorder()
-	h(rec, req)
+	h(rec, reqWithCookie(s.newSession()))
 	if !called {
 		t.Fatalf("valid session rejected: code=%d", rec.Code)
 	}

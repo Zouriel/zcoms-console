@@ -52,6 +52,7 @@ export class App {
   agentAvailable = signal(true);
   active = signal('contacts');
   navOpen = signal(false);
+  private lastUnauthorized = 0;
 
   navGroups = [
     {
@@ -77,10 +78,15 @@ export class App {
         const url = (e as NavigationEnd).urlAfterRedirects || '/';
         this.active.set(url.split('/')[1] || 'contacts');
       });
-    // Any 401 from the Api drops us back to the login gate.
+    // Drop back to the login gate only when a *new* 401 occurs — keyed on the
+    // unauthorized counter incrementing, NOT on `ready`, so confirming auth on
+    // boot can't accidentally flip us back to the login screen.
     effect(() => {
-      this.api.unauthorized();
-      if (this.ready()) this.authed.set(false);
+      const n = this.api.unauthorized();
+      if (n > this.lastUnauthorized) {
+        this.lastUnauthorized = n;
+        this.authed.set(false);
+      }
     });
     this.refresh();
   }

@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
-	"sync"
-	"time"
 
 	agentclient "github.com/Zouriel/zcoms-agent/client"
 	"github.com/Zouriel/zcoms/client"
@@ -17,28 +17,48 @@ import (
 //go:embed web/*
 var webFS embed.FS
 
-// Server holds the two published clients and the in-memory session table. It
-// owns no database — all state behind it is reached through comms/agent.
+// Server holds the two published clients. It owns no database — all state behind
+// it is reached through comms/agent. Auth is stateless: a session is a signed,
+// self-expiring cookie validated against `secret`, so it survives restarts (the
+// secret is persisted) without any server-side session table.
 type Server struct {
 	comms  *client.Client
 	agent  *agentclient.Client
-	secret []byte // 32-byte server secret, HMAC key for signing session tokens
-
-	mu       sync.Mutex
-	sessions map[string]time.Time // session id -> expiry
+	secret []byte // stable HMAC key, persisted across restarts (see loadOrCreateSecret)
 }
 
 func newServer(comms *client.Client, agent *agentclient.Client) *Server {
-	secret := make([]byte, 32)
-	if _, err := rand.Read(secret); err != nil {
-		panic("cannot read crypto randomness: " + err.Error())
-	}
 	return &Server{
-		comms:    comms,
-		agent:    agent,
-		secret:   secret,
-		sessions: map[string]time.Time{},
+		comms:  comms,
+		agent:  agent,
+		secret: loadOrCreateSecret(),
 	}
+}
+
+// loadOrCreateSecret returns a stable 32-byte HMAC key, read from (or written
+// once to) ~/.config/zcoms/console-secret (0600). Persisting it means a console
+// restart no longer invalidates everyone's login. Falls back to an ephemeral
+// key only if the config dir is somehow unavailable.
+func loadOrCreateSecret() []byte {
+	dir, err := client.DefaultAppDir()
+	if err == nil {
+		path := filepath.Join(dir, "console-secret")
+		if b, rerr := os.ReadFile(path); rerr == nil && len(b) >= 32 {
+			return b
+		}
+		secret := make([]byte, 32)
+		if _, rerr := rand.Read(secret); rerr != nil {
+			panic("cannot read crypto randomness: " + rerr.Error())
+		}
+		_ = os.MkdirAll(dir, 0o700)
+		_ = os.WriteFile(path, secret, 0o600)
+		return secret
+	}
+	secret := make([]byte, 32)
+	if _, rerr := rand.Read(secret); rerr != nil {
+		panic("cannot read crypto randomness: " + rerr.Error())
+	}
+	return secret
 }
 
 // setting reads one agent.db settings scalar. Returns ok=false when the agent is

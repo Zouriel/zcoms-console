@@ -2,12 +2,12 @@ package main
 
 import (
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,65 +16,49 @@ import (
 
 const (
 	cookieName     = "zc_console"
-	sessionTTL     = 12 * time.Hour
+	sessionTTL     = 30 * 24 * time.Hour // a month — this is a local single-operator tool
 	passwordSetKey = "console.password_hash"
 )
 
-// signToken returns "id.sig" where sig = HMAC-SHA256(secret, id). The server
-// secret is regenerated every startup, so a restart invalidates all cookies —
-// fine for a single-operator local tool.
-func (s *Server) signToken(id string) string {
+// signToken returns "payload.sig" where sig = HMAC-SHA256(secret, payload). The
+// secret is stable across restarts (loadOrCreateSecret), so a signed token stays
+// valid until it self-expires — no server-side session table needed.
+func (s *Server) signToken(payload string) string {
 	mac := hmac.New(sha256.New, s.secret)
-	mac.Write([]byte(id))
-	return id + "." + hex.EncodeToString(mac.Sum(nil))
+	mac.Write([]byte(payload))
+	return payload + "." + hex.EncodeToString(mac.Sum(nil))
 }
 
-// verifyToken validates the HMAC signature and returns the session id.
-func (s *Server) verifyToken(tok string) (string, bool) {
-	id, sig, ok := strings.Cut(tok, ".")
-	if !ok {
-		return "", false
-	}
-	mac := hmac.New(sha256.New, s.secret)
-	mac.Write([]byte(id))
-	want := mac.Sum(nil)
-	got, err := hex.DecodeString(sig)
-	if err != nil || subtle.ConstantTimeCompare(want, got) != 1 {
-		return "", false
-	}
-	return id, true
-}
-
-// newSession mints a random session id, records its expiry, and returns the
-// signed cookie value.
+// newSession mints a stateless, self-expiring session token. The payload carries
+// only the expiry, so validation needs nothing but the secret.
 func (s *Server) newSession() string {
-	raw := make([]byte, 32)
-	_, _ = rand.Read(raw)
-	id := hex.EncodeToString(raw)
-	s.mu.Lock()
-	s.sessions[id] = time.Now().Add(sessionTTL)
-	s.mu.Unlock()
-	return s.signToken(id)
+	payload := "v1:" + strconv.FormatInt(time.Now().Add(sessionTTL).Unix(), 10)
+	return s.signToken(payload)
 }
 
-// validSession reports whether the request carries a live, signed session.
+// validSession reports whether the request carries a live, correctly-signed
+// token. Stateless: it survives a console restart because the secret does.
 func (s *Server) validSession(r *http.Request) bool {
 	c, err := r.Cookie(cookieName)
 	if err != nil {
 		return false
 	}
-	id, ok := s.verifyToken(c.Value)
+	payload, sig, ok := strings.Cut(c.Value, ".")
 	if !ok {
 		return false
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	exp, ok := s.sessions[id]
-	if !ok || time.Now().After(exp) {
-		delete(s.sessions, id)
+	mac := hmac.New(sha256.New, s.secret)
+	mac.Write([]byte(payload))
+	got, err := hex.DecodeString(sig)
+	if err != nil || subtle.ConstantTimeCompare(mac.Sum(nil), got) != 1 {
 		return false
 	}
-	return true
+	_, expStr, ok := strings.Cut(payload, ":")
+	if !ok {
+		return false
+	}
+	exp, err := strconv.ParseInt(expStr, 10, 64)
+	return err == nil && time.Now().Unix() <= exp
 }
 
 // requireAuth wraps an authenticated handler, rejecting sessionless requests.
@@ -129,13 +113,8 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(cookieName); err == nil {
-		if id, ok := s.verifyToken(c.Value); ok {
-			s.mu.Lock()
-			delete(s.sessions, id)
-			s.mu.Unlock()
-		}
-	}
+	// Stateless tokens aren't revoked server-side (single-operator local tool);
+	// clearing the cookie ends the session for this browser.
 	http.SetCookie(w, &http.Cookie{
 		Name: cookieName, Value: "", Path: "/", MaxAge: -1,
 		HttpOnly: true, SameSite: http.SameSiteLaxMode,
