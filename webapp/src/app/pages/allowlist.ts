@@ -15,15 +15,19 @@ const ROLES = [
   imports: [FormsModule, ...UI],
   template: `
     <div class="page-head">
-      <ui-text variant="caption" class="muted">who may drive the agent over Telegram — keep this tiny (≈ shell access)</ui-text>
+      <ui-text variant="caption" class="muted">who may drive the agent over Telegram or WhatsApp — keep this tiny (≈ shell access)</ui-text>
     </div>
 
     <ui-card padding="md">
       <div class="toolbar">
-        <ui-input [(ngModel)]="handle" placeholder="@handle"></ui-input>
+        <ui-select [options]="platforms" [(ngModel)]="platform"></ui-select>
+        <ui-input [(ngModel)]="handle" [placeholder]="platform === 'whatsapp' ? '+960 number' : '@handle'"></ui-input>
         <ui-select [options]="roles" [(ngModel)]="role"></ui-select>
         <ui-button variant="primary" (click)="add()">Add</ui-button>
       </div>
+      <ui-text variant="caption" class="muted" style="display:block;margin:-8px 0 14px">
+        WhatsApp drivers are matched by number and replied to over the sidecar — poll-based (~20s), not instant like Telegram.
+      </ui-text>
       @if (loading()) { <ui-spinner></ui-spinner> } @else {
         <div class="tbl-scroll"><table class="tbl">
           <thead><tr><th>ID</th><th>Platform</th><th>Handle</th><th>Max role</th><th style="width:1%"></th></tr></thead>
@@ -48,9 +52,11 @@ export class AllowlistPage {
   private toast = inject(UiToastService);
   items = signal<Allow[]>([]);
   loading = signal(true);
+  platform = 'telegram';
   handle = '';
   role = 'read';
   roles = ROLES;
+  platforms = [{ label: 'Telegram', value: 'telegram' }, { label: 'WhatsApp', value: 'whatsapp' }];
 
   constructor() { this.load(); }
 
@@ -62,7 +68,7 @@ export class AllowlistPage {
   }
   async add() {
     if (!this.handle.trim()) return;
-    try { await this.api.post('/api/allowlist', { handle: this.handle, role: this.role }); this.handle = ''; this.toast.success('Added'); await this.load(); }
+    try { await this.api.post('/api/allowlist', { platform: this.platform, handle: this.handle, role: this.role }); this.handle = ''; this.toast.success('Added'); await this.load(); }
     catch (e: any) { this.toast.danger(e.message, 'Add failed'); }
   }
   async remove(a: Allow) {

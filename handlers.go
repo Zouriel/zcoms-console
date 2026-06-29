@@ -233,17 +233,25 @@ func (s *Server) handleAllowlistList(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAllowlistAdd(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Handle string `json:"handle"`
-		Role   string `json:"role"`
+		Platform string `json:"platform"`
+		Handle   string `json:"handle"`
+		Role     string `json:"role"`
 	}
 	if !decode(w, r, &body) {
 		return
 	}
-	handle := body.Handle
-	if handle != "" && !strings.HasPrefix(handle, "@") {
-		handle = "@" + handle
+	platform := strings.ToLower(strings.TrimSpace(body.Platform))
+	if platform != "whatsapp" {
+		platform = "telegram"
 	}
-	s.agentCmd(w, "allowlist add "+handle+" "+body.Role)
+	handle := strings.TrimSpace(body.Handle)
+	if handle == "" || strings.ContainsAny(handle, "\t\n") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "a handle is required"})
+		return
+	}
+	// The agent normalizes per platform (@-form for Telegram, digits for WhatsApp)
+	// and treats the trailing token as the role, so a spaced WhatsApp number is fine.
+	s.agentCmd(w, "allowlist add "+platform+" "+handle+" "+body.Role)
 }
 
 func (s *Server) handleAllowlistRemove(w http.ResponseWriter, r *http.Request) {
