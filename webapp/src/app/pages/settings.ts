@@ -37,7 +37,7 @@ import { UI } from '../core/ui';
 
     <ui-card padding="md" style="margin-top:16px">
       @if (loading()) { <ui-spinner></ui-spinner> } @else {
-        <table class="tbl">
+        <div class="tbl-scroll"><table class="tbl">
           <thead><tr><th>Key</th><th>Value</th><th style="width:1%"></th></tr></thead>
           <tbody>
             @for (k of keys(); track k) {
@@ -48,7 +48,7 @@ import { UI } from '../core/ui';
               </tr>
             } @empty { <tr><td colspan="3" class="empty">No settings.</td></tr> }
           </tbody>
-        </table>
+        </table></div>
       }
     </ui-card>
   `,

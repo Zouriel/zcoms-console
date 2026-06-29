@@ -25,7 +25,7 @@ const ROLES = [
 
     <ui-card padding="md">
       @if (loading()) { <ui-spinner></ui-spinner> } @else {
-        <table class="tbl">
+        <div class="tbl-scroll"><table class="tbl">
           <thead><tr><th>Name</th><th>Path</th><th>Max role</th><th>State</th><th style="width:1%"></th></tr></thead>
           <tbody>
             @for (w of items(); track w.id) {
@@ -51,7 +51,7 @@ const ROLES = [
               </tr>
             } @empty { <tr><td colspan="5" class="empty">No workspaces — set discovery_roots in Settings, then Sync.</td></tr> }
           </tbody>
-        </table>
+        </table></div>
       }
     </ui-card>
   `,

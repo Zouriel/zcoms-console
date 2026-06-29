@@ -14,9 +14,12 @@ body {
 .muted { color: var(--ui-color-text-muted); }
 .stack { display: flex; flex-direction: column; gap: var(--ui-space-3); }
 .row { display: flex; gap: var(--ui-space-2); align-items: center; flex-wrap: wrap; }
-.page-head { display: flex; align-items: center; gap: var(--ui-space-3); margin-bottom: var(--ui-space-4); }
+.page-head { display: flex; align-items: center; gap: var(--ui-space-3); margin-bottom: var(--ui-space-4); flex-wrap: wrap; }
 .toolbar { display: flex; gap: var(--ui-space-2); flex-wrap: wrap; align-items: center; margin-bottom: var(--ui-space-4); }
 .row-actions { display: flex; gap: var(--ui-space-2); flex-wrap: wrap; }
+
+/* Wide tables scroll horizontally inside their card instead of stretching the page. */
+.tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
 
 /* Token-styled table for action-heavy CRUD screens (ui-table is read-only). */
 .tbl { width: 100%; border-collapse: collapse; font-size: var(--ui-font-size-md); }

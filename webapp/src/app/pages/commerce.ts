@@ -48,7 +48,7 @@ const STORE_TYPES = ['files', 'services', 'subscriptions', 'mixed'].map((v) => (
       @if (loading()) { <ui-spinner></ui-spinner> }
       @else if (text()) { <pre class="raw">{{ text() }}</pre> }
       @else if (rows().length) {
-        <table class="tbl">
+        <div class="tbl-scroll"><table class="tbl">
           <thead><tr>@for (c of cols(); track c) { <th>{{ c }}</th> }<th style="width:1%"></th></tr></thead>
           <tbody>
             @for (r of rows(); track $index) {
@@ -62,7 +62,7 @@ const STORE_TYPES = ['files', 'services', 'subscriptions', 'mixed'].map((v) => (
               </tr>
             }
           </tbody>
-        </table>
+        </table></div>
       } @else { <ui-text variant="body" class="muted">Nothing to show.</ui-text> }
     </ui-card>
 

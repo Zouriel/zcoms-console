@@ -54,7 +54,7 @@ const BACKENDS = [{ label: 'claude', value: 'claude' }, { label: 'codex', value:
       </div>
     }
   `,
-  styles: [`.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: var(--ui-space-4); }`],
+  styles: [`.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: var(--ui-space-4); }`],
 })
 export class PersonasPage {
   private api = inject(Api);

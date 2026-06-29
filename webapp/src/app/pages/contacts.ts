@@ -21,7 +21,7 @@ interface Contact { id: number; name: string; note?: string; handles?: Handle[];
       @if (loading()) {
         <ui-spinner></ui-spinner>
       } @else {
-        <table class="tbl">
+        <div class="tbl-scroll"><table class="tbl">
           <thead>
             <tr><th>Name</th><th>Note</th><th>Handles</th><th style="width:1%"></th></tr>
           </thead>
@@ -55,7 +55,7 @@ interface Contact { id: number; name: string; note?: string; handles?: Handle[];
               <tr><td colspan="4" class="empty">No contacts yet.</td></tr>
             }
           </tbody>
-        </table>
+        </table></div>
       }
     </ui-card>
 

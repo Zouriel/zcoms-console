@@ -22,7 +22,7 @@ interface Session { external_id: string; title?: string; backend?: string; label
       </div>
       @if (loadingSessions()) { <ui-spinner></ui-spinner> }
       @else if (picked) {
-        <table class="tbl">
+        <div class="tbl-scroll"><table class="tbl">
           <thead><tr><th>Title</th><th>Backend</th><th>Label</th><th style="width:1%"></th></tr></thead>
           <tbody>
             @for (s of sessions(); track s.external_id) {
@@ -34,7 +34,7 @@ interface Session { external_id: string; title?: string; backend?: string; label
               </tr>
             } @empty { <tr><td colspan="4" class="empty">No sessions in this workspace.</td></tr> }
           </tbody>
-        </table>
+        </table></div>
       }
     </ui-card>
   `,

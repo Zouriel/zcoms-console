@@ -11,7 +11,8 @@ import { LoginComponent } from './auth/login';
   template: `
     @if (ready()) {
       @if (authed()) {
-        <div class="shell">
+        <div class="shell" [class.nav-open]="navOpen()">
+          <div class="backdrop" (click)="navOpen.set(false)"></div>
           <aside class="side">
             <div class="brand">
               <ui-text variant="h4">zcoms</ui-text>
@@ -21,6 +22,7 @@ import { LoginComponent } from './auth/login';
           </aside>
           <div class="main">
             <header class="topbar">
+              <ui-button class="hamburger" variant="ghost" size="sm" (click)="navOpen.set(!navOpen())">☰</ui-button>
               <ui-text variant="h3">{{ activeLabel() }}</ui-text>
               <span class="spacer"></span>
               @if (!agentAvailable()) { <ui-badge tone="warning">agent offline</ui-badge> }
@@ -53,6 +55,27 @@ import { LoginComponent } from './auth/login';
       position: sticky; top: 0; z-index: 5;
     }
     .content { padding: var(--ui-space-6); min-width: 0; }
+    .hamburger { display: none; }
+    .backdrop { display: none; }
+
+    /* Mobile: the sidebar becomes an off-canvas drawer toggled by the hamburger. */
+    @media (max-width: 860px) {
+      .shell { grid-template-columns: 1fr; }
+      .side {
+        position: fixed; top: 0; left: 0; bottom: 0; width: 264px; max-width: 84vw;
+        z-index: 30; transform: translateX(-100%);
+        transition: transform var(--ui-motion-base, 200ms) var(--ui-ease-standard, ease);
+        overflow-y: auto;
+      }
+      .shell.nav-open .side { transform: translateX(0); }
+      .shell.nav-open .backdrop {
+        display: block; position: fixed; inset: 0; z-index: 20;
+        background: rgba(0, 0, 0, 0.55);
+      }
+      .hamburger { display: inline-flex; }
+      .content { padding: var(--ui-space-4); }
+      .topbar { padding: var(--ui-space-3) var(--ui-space-4); }
+    }
   `],
 })
 export class App {
@@ -64,6 +87,7 @@ export class App {
   needsSetup = signal(false);
   agentAvailable = signal(true);
   active = signal('contacts');
+  navOpen = signal(false);
 
   navGroups = [
     {
@@ -109,7 +133,7 @@ export class App {
     this.ready.set(true);
   }
 
-  go(item: { value: string }) { this.router.navigate([item.value]); }
+  go(item: { value: string }) { this.router.navigate([item.value]); this.navOpen.set(false); }
 
   async logout() {
     try { await this.api.post('/api/logout'); } catch { /* ignore */ }

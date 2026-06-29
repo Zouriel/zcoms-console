@@ -25,7 +25,7 @@ const ROLES = [
         <ui-button variant="primary" (click)="add()">Add</ui-button>
       </div>
       @if (loading()) { <ui-spinner></ui-spinner> } @else {
-        <table class="tbl">
+        <div class="tbl-scroll"><table class="tbl">
           <thead><tr><th>ID</th><th>Platform</th><th>Handle</th><th>Max role</th><th style="width:1%"></th></tr></thead>
           <tbody>
             @for (a of items(); track a.id) {
@@ -38,7 +38,7 @@ const ROLES = [
               </tr>
             } @empty { <tr><td colspan="5" class="empty">No one allow-listed yet.</td></tr> }
           </tbody>
-        </table>
+        </table></div>
       }
     </ui-card>
   `,
