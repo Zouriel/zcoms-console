@@ -62,6 +62,7 @@ export class App {
         { label: 'Sessions', value: 'sessions' },
         { label: 'Personas', value: 'personas' },
         { label: 'Allowlist', value: 'allowlist' },
+        { label: 'Connectors', value: 'connectors' },
         { label: 'Commerce', value: 'commerce' },
         { label: 'Settings', value: 'settings' },
       ],

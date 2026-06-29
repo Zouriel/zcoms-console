@@ -7,6 +7,7 @@ export const routes: Routes = [
   { path: 'sessions', loadComponent: () => import('./pages/sessions').then((m) => m.SessionsPage) },
   { path: 'personas', loadComponent: () => import('./pages/personas').then((m) => m.PersonasPage) },
   { path: 'allowlist', loadComponent: () => import('./pages/allowlist').then((m) => m.AllowlistPage) },
+  { path: 'connectors', loadComponent: () => import('./pages/connectors').then((m) => m.ConnectorsPage) },
   { path: 'commerce', loadComponent: () => import('./pages/commerce').then((m) => m.CommercePage) },
   { path: 'settings', loadComponent: () => import('./pages/settings').then((m) => m.SettingsPage) },
   { path: '**', redirectTo: 'contacts' },

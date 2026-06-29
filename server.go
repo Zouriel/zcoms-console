@@ -115,6 +115,10 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /api/settings", auth(s.handleSettingsSet))
 	mux.HandleFunc("POST /api/password", auth(s.handlePasswordSet))
 
+	// Connectors (comms client) — live per-transport status + WhatsApp pairing QR.
+	mux.HandleFunc("GET /api/connectors", auth(s.handleConnectors))
+	mux.HandleFunc("GET /api/connectors/{transport}/qr", auth(s.handleConnectorQR))
+
 	// Commerce (core-only module, proxied over commerce.sock) — stores,
 	// products, orders, refunds, billing, reports + their admin actions. Every
 	// handler degrades to "module not running" when commerce isn't installed.
