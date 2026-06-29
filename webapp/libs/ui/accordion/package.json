@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-accordion.mjs",
+  "typings": "../types/ui-accordion.d.ts"
+}

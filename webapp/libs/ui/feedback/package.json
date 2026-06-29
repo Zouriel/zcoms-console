@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-feedback.mjs",
+  "typings": "../types/ui-feedback.d.ts"
+}

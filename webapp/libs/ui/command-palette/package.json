@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-command-palette.mjs",
+  "typings": "../types/ui-command-palette.d.ts"
+}

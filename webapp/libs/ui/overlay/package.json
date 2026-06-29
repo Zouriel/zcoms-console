@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-overlay.mjs",
+  "typings": "../types/ui-overlay.d.ts"
+}

@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-pdf-viewer.mjs",
+  "typings": "../types/ui-pdf-viewer.d.ts"
+}

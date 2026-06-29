@@ -1,0 +1,41 @@
+/* Global app styles — built on the ui library's dark design tokens. */
+html, body { height: 100%; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ui-color-bg);
+  color: var(--ui-color-text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: var(--ui-font-size-md);
+  -webkit-font-smoothing: antialiased;
+}
+
+.spacer { flex: 1 1 auto; }
+.muted { color: var(--ui-color-text-muted); }
+.stack { display: flex; flex-direction: column; gap: var(--ui-space-3); }
+.row { display: flex; gap: var(--ui-space-2); align-items: center; flex-wrap: wrap; }
+.page-head { display: flex; align-items: center; gap: var(--ui-space-3); margin-bottom: var(--ui-space-4); }
+.toolbar { display: flex; gap: var(--ui-space-2); flex-wrap: wrap; align-items: center; margin-bottom: var(--ui-space-4); }
+.row-actions { display: flex; gap: var(--ui-space-2); flex-wrap: wrap; }
+
+/* Token-styled table for action-heavy CRUD screens (ui-table is read-only). */
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--ui-font-size-md); }
+.tbl th, .tbl td {
+  text-align: left;
+  padding: var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-color-border);
+  vertical-align: middle;
+}
+.tbl th { color: var(--ui-color-text-muted); font-weight: 600; font-size: var(--ui-font-size-sm); }
+.tbl tbody tr:hover td { background: var(--ui-color-surface-raised); }
+.tbl .empty { color: var(--ui-color-text-muted); padding: var(--ui-space-6); text-align: center; }
+
+pre.raw {
+  background: var(--ui-color-surface);
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius);
+  padding: var(--ui-space-3);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  font-size: var(--ui-font-size-sm);
+}

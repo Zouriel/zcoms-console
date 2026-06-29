@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-combobox.mjs",
+  "typings": "../types/ui-combobox.d.ts"
+}

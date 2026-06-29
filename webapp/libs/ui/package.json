@@ -1,0 +1,151 @@
+{
+  "name": "ui",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "@angular/common": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/forms": "^22.0.0",
+    "@angular/cdk": "^22.0.0",
+    "@angular/aria": "^22.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false,
+  "module": "fesm2022/ui.mjs",
+  "typings": "types/ui.d.ts",
+  "exports": {
+    "./package.json": {
+      "default": "./package.json"
+    },
+    ".": {
+      "types": "./types/ui.d.ts",
+      "default": "./fesm2022/ui.mjs"
+    },
+    "./accordion": {
+      "types": "./types/ui-accordion.d.ts",
+      "default": "./fesm2022/ui-accordion.mjs"
+    },
+    "./alert": {
+      "types": "./types/ui-alert.d.ts",
+      "default": "./fesm2022/ui-alert.mjs"
+    },
+    "./badge": {
+      "types": "./types/ui-badge.d.ts",
+      "default": "./fesm2022/ui-badge.mjs"
+    },
+    "./behaviors": {
+      "types": "./types/ui-behaviors.d.ts",
+      "default": "./fesm2022/ui-behaviors.mjs"
+    },
+    "./button": {
+      "types": "./types/ui-button.d.ts",
+      "default": "./fesm2022/ui-button.mjs"
+    },
+    "./card": {
+      "types": "./types/ui-card.d.ts",
+      "default": "./fesm2022/ui-card.mjs"
+    },
+    "./combobox": {
+      "types": "./types/ui-combobox.d.ts",
+      "default": "./fesm2022/ui-combobox.mjs"
+    },
+    "./command-palette": {
+      "types": "./types/ui-command-palette.d.ts",
+      "default": "./fesm2022/ui-command-palette.mjs"
+    },
+    "./data": {
+      "types": "./types/ui-data.d.ts",
+      "default": "./fesm2022/ui-data.mjs"
+    },
+    "./datepicker": {
+      "types": "./types/ui-datepicker.d.ts",
+      "default": "./fesm2022/ui-datepicker.mjs"
+    },
+    "./dialog": {
+      "types": "./types/ui-dialog.d.ts",
+      "default": "./fesm2022/ui-dialog.mjs"
+    },
+    "./divider": {
+      "types": "./types/ui-divider.d.ts",
+      "default": "./fesm2022/ui-divider.mjs"
+    },
+    "./feedback": {
+      "types": "./types/ui-feedback.d.ts",
+      "default": "./fesm2022/ui-feedback.mjs"
+    },
+    "./file-viewer": {
+      "types": "./types/ui-file-viewer.d.ts",
+      "default": "./fesm2022/ui-file-viewer.mjs"
+    },
+    "./form": {
+      "types": "./types/ui-form.d.ts",
+      "default": "./fesm2022/ui-form.mjs"
+    },
+    "./fx": {
+      "types": "./types/ui-fx.d.ts",
+      "default": "./fesm2022/ui-fx.mjs"
+    },
+    "./layout": {
+      "types": "./types/ui-layout.d.ts",
+      "default": "./fesm2022/ui-layout.mjs"
+    },
+    "./link": {
+      "types": "./types/ui-link.d.ts",
+      "default": "./fesm2022/ui-link.mjs"
+    },
+    "./list": {
+      "types": "./types/ui-list.d.ts",
+      "default": "./fesm2022/ui-list.mjs"
+    },
+    "./media": {
+      "types": "./types/ui-media.d.ts",
+      "default": "./fesm2022/ui-media.mjs"
+    },
+    "./navigation": {
+      "types": "./types/ui-navigation.d.ts",
+      "default": "./fesm2022/ui-navigation.mjs"
+    },
+    "./overlay": {
+      "types": "./types/ui-overlay.d.ts",
+      "default": "./fesm2022/ui-overlay.mjs"
+    },
+    "./pdf-viewer": {
+      "types": "./types/ui-pdf-viewer.d.ts",
+      "default": "./fesm2022/ui-pdf-viewer.mjs"
+    },
+    "./progress": {
+      "types": "./types/ui-progress.d.ts",
+      "default": "./fesm2022/ui-progress.mjs"
+    },
+    "./skeleton": {
+      "types": "./types/ui-skeleton.d.ts",
+      "default": "./fesm2022/ui-skeleton.mjs"
+    },
+    "./spinner": {
+      "types": "./types/ui-spinner.d.ts",
+      "default": "./fesm2022/ui-spinner.mjs"
+    },
+    "./table": {
+      "types": "./types/ui-table.d.ts",
+      "default": "./fesm2022/ui-table.mjs"
+    },
+    "./tabs": {
+      "types": "./types/ui-tabs.d.ts",
+      "default": "./fesm2022/ui-tabs.mjs"
+    },
+    "./text": {
+      "types": "./types/ui-text.d.ts",
+      "default": "./fesm2022/ui-text.mjs"
+    },
+    "./theme": {
+      "types": "./types/ui-theme.d.ts",
+      "default": "./fesm2022/ui-theme.mjs"
+    },
+    "./window": {
+      "types": "./types/ui-window.d.ts",
+      "default": "./fesm2022/ui-window.mjs"
+    }
+  },
+  "type": "module"
+}

@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-layout.mjs",
+  "typings": "../types/ui-layout.d.ts"
+}

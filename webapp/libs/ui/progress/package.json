@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-progress.mjs",
+  "typings": "../types/ui-progress.d.ts"
+}

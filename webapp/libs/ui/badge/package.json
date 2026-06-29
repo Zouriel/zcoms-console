@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-badge.mjs",
+  "typings": "../types/ui-badge.d.ts"
+}

@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-divider.mjs",
+  "typings": "../types/ui-divider.d.ts"
+}

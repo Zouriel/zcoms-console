@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-alert.mjs",
+  "typings": "../types/ui-alert.d.ts"
+}

@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-window.mjs",
+  "typings": "../types/ui-window.d.ts"
+}

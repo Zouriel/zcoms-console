@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -122,12 +123,16 @@ func (s *Server) routes() http.Handler {
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	// Single-page app: the client decides login vs. tabs from /api/auth/status.
-	// Static assets (app.js, style.css) are served from the embedded FS.
-	if r.URL.Path != "/" {
-		sub, _ := fs.Sub(webFS, "web")
-		http.FileServerFS(sub).ServeHTTP(w, r)
-		return
+	// The UI is an Angular SPA with client-side routing under base href "/".
+	// Serve a real embedded asset (the hashed JS/CSS bundles, favicon, …) when
+	// the path maps to one; otherwise fall back to index.html so a deep link
+	// like /contacts boots the app instead of 404ing.
+	sub, _ := fs.Sub(webFS, "web")
+	if rel := strings.TrimPrefix(r.URL.Path, "/"); rel != "" {
+		if info, err := fs.Stat(sub, rel); err == nil && !info.IsDir() {
+			http.FileServerFS(sub).ServeHTTP(w, r)
+			return
+		}
 	}
 	b, err := webFS.ReadFile("web/index.html")
 	if err != nil {

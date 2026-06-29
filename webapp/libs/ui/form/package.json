@@ -1,0 +1,4 @@
+{
+  "module": "../fesm2022/ui-form.mjs",
+  "typings": "../types/ui-form.d.ts"
+}
