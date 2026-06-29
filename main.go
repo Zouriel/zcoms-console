@@ -4,16 +4,20 @@
 // agent clients, which already perform owner-level writes. Logging in is what
 // authorizes the operator as the owner behind those seams.
 //
-// SECURITY: the server binds 127.0.0.1 only. Allow-listing/owner access here is
-// roughly shell-level, so this must never be exposed beyond localhost. If it
-// ever needs to listen off-loopback, that requires TLS + real auth first — out
-// of scope today (see bindAddr below).
+// SECURITY: the server binds 127.0.0.1 by default. Allow-listing/owner access
+// here is roughly shell-level, so it must never face the public internet. The
+// console.bind setting may move it off loopback for a PRIVATE overlay only —
+// intended for a Tailscale IP (100.x.y.z), where the tailnet is WireGuard-
+// encrypted and device-scoped. Password auth gates access; there is no TLS on a
+// plain bind, so never bind a public interface or 0.0.0.0 on an untrusted LAN.
 package main
 
 import (
 	"log"
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	agentclient "github.com/Zouriel/zcoms-agent/client"
@@ -47,8 +51,17 @@ func main() {
 		}
 	}
 
-	// 127.0.0.1 ONLY — never 0.0.0.0. See the package SECURITY note.
-	bindAddr := "127.0.0.1:" + strconv.Itoa(port)
+	// Bind host defaults to 127.0.0.1 (loopback only — the safe default). It can
+	// be overridden via the console.bind setting for tailnet access: set it to a
+	// Tailscale IP (100.x.y.z) so the UI is reachable from your own devices over
+	// WireGuard-encrypted Tailscale, while staying invisible to the LAN/internet.
+	// Do NOT set 0.0.0.0 unless you understand it exposes the UI to every network
+	// this host is on. There is still password auth, but no TLS on a plain bind.
+	host := "127.0.0.1"
+	if v, ok := srv.setting("console.bind"); ok && strings.TrimSpace(v) != "" {
+		host = strings.TrimSpace(v)
+	}
+	bindAddr := net.JoinHostPort(host, strconv.Itoa(port))
 	httpSrv := &http.Server{
 		Addr:              bindAddr,
 		Handler:           srv.routes(),
