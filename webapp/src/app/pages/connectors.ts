@@ -1,6 +1,7 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Api } from '../core/api';
 import { UI } from '../core/ui';
+import { UiToastService } from 'ui/dialog';
 
 interface Caps { receive: boolean; blocking_ask: boolean; files: boolean; presence: boolean; }
 interface Connector {
@@ -16,9 +17,9 @@ interface Connector {
 // roadmap is visible. Instagram lands in Phase C; Discord/Viber have no
 // real-account API (self-bot / commercial-only), so they're parked.
 const RESERVED = [
-  { transport: 'instagram', label: 'Instagram', note: 'Coming soon — real personal account via the private API (Phase C).', state: 'unavailable' },
-  { transport: 'discord', label: 'Discord', note: 'No real-account API (a user token = a self-bot, ToS-bannable). Reserved.', state: 'unavailable' },
-  { transport: 'viber', label: 'Viber', note: 'No real-account API (bot/commercial only). Reserved.', state: 'unavailable' },
+  { transport: 'instagram', label: 'Instagram', note: 'Coming soon — real personal account via the private API (Phase C).' },
+  { transport: 'discord', label: 'Discord', note: 'No real-account API (a user token = a self-bot, ToS-bannable). Reserved.' },
+  { transport: 'viber', label: 'Viber', note: 'No real-account API (bot/commercial only). Reserved.' },
 ];
 
 const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsApp', instagram: 'Instagram', discord: 'Discord', viber: 'Viber' };
@@ -45,12 +46,11 @@ const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsA
             <ui-text variant="caption" class="muted" style="display:block;margin-top:6px">{{ detailLine(c) }}</ui-text>
           }
 
-          @if (c.has_qr) {
-            <div class="qr-wrap">
-              <img class="qr" [src]="qrSrc(c.transport)" alt="WhatsApp pairing QR" width="240" height="240" />
-              <ui-text variant="caption" class="muted">
-                On your phone: WhatsApp → Settings → Linked Devices → Link a device, then scan. The code refreshes automatically.
-              </ui-text>
+          @if (canPair(c)) {
+            <div style="margin-top:14px">
+              <ui-button variant="primary" size="sm" (click)="openPairing(c.transport)">
+                {{ c.state === 'connected' ? 'Re-link' : (c.state === 'error' || c.state === 'session_expired' ? 'Retry pairing' : 'Pair ' + label(c.transport)) }}
+              </ui-button>
             </div>
           }
 
@@ -74,10 +74,25 @@ const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsA
         </ui-card>
       }
     </ui-grid>
+
+    <ui-modal [(open)]="qrModal" [title]="'Pair ' + label(qrTransport())" size="sm">
+      <div class="qr-wrap">
+        @if (activeQR()) {
+          <img class="qr" [src]="qrSrc(qrTransport())" alt="pairing QR" width="260" height="260" />
+          <ui-text variant="caption" class="muted">
+            On your phone: WhatsApp → Settings → Linked Devices → Link a device, then scan. A fresh code is generated automatically if this one expires.
+          </ui-text>
+        } @else {
+          <ui-spinner></ui-spinner>
+          <ui-text variant="caption" class="muted">Generating a fresh code…</ui-text>
+        }
+        <ui-button variant="ghost" size="sm" (click)="regenerate()">Regenerate code</ui-button>
+      </div>
+    </ui-modal>
   `,
   styles: [`
     .conn-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 16px; text-align: center; }
+    .qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 8px 0; }
     .qr { background: #fff; padding: 10px; border-radius: var(--ui-radius); image-rendering: pixelated; }
     .caps { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
     .reserved { opacity: 0.6; }
@@ -85,15 +100,24 @@ const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsA
 })
 export class ConnectorsPage implements OnDestroy {
   private api = inject(Api);
+  private toast = inject(UiToastService);
   connectors = signal<Connector[]>([]);
   error = signal('');
   reserved = RESERVED;
+  qrModal = signal(false);
+  qrTransport = signal('whatsapp');
   private tick = signal(0);
   private timer: any;
+  private rearming = false;
+
+  // The QR is ready when the connector for the open modal currently has one.
+  activeQR = computed(() => {
+    const c = this.connectors().find((x) => x.transport === this.qrTransport());
+    return !!c?.has_qr;
+  });
 
   constructor() {
     this.load();
-    // Live poll: status (and a freshly-rotated WhatsApp QR) reflect within ~2s.
     this.timer = setInterval(() => this.load(), 2000);
   }
 
@@ -105,10 +129,52 @@ export class ConnectorsPage implements OnDestroy {
       this.connectors.set(res?.connectors || []);
       this.error.set('');
       this.tick.update((n) => n + 1);
+      this.watchPairing();
     } catch (e: any) {
       this.error.set('Comms daemon unreachable — ' + (e?.message || 'is it running?'));
     }
   }
+
+  // While the QR modal is open: close it on success, and silently re-arm a fresh
+  // code if the current one expired (so the modal always shows a scannable QR).
+  private watchPairing() {
+    if (!this.qrModal()) return;
+    const c = this.connectors().find((x) => x.transport === this.qrTransport());
+    if (!c) return;
+    if (c.state === 'connected') {
+      this.qrModal.set(false);
+      this.toast.success(this.label(c.transport) + ' paired');
+      return;
+    }
+    if ((c.state === 'error' || c.state === 'session_expired') && !this.rearming) {
+      this.reconnect(this.qrTransport());
+    }
+  }
+
+  // Open the modal and arm a fresh code.
+  async openPairing(transport: string) {
+    this.qrTransport.set(transport);
+    this.qrModal.set(true);
+    await this.reconnect(transport);
+  }
+
+  async regenerate() { await this.reconnect(this.qrTransport()); }
+
+  private async reconnect(transport: string) {
+    if (this.rearming) return;
+    this.rearming = true;
+    try {
+      await this.api.post(`/api/connectors/${transport}/reconnect`);
+      await this.load();
+    } catch (e: any) {
+      this.toast.danger(e.message, 'Pairing failed');
+    } finally {
+      this.rearming = false;
+    }
+  }
+
+  // Which transports expose a pairing flow (QR-capable, not Telegram).
+  canPair(c: Connector) { return c.transport === 'whatsapp'; }
 
   label(t: string) { return LABELS[t] || t; }
   qrSrc(t: string) { return `/api/connectors/${t}/qr?t=${this.tick()}`; }
@@ -130,19 +196,20 @@ export class ConnectorsPage implements OnDestroy {
       case 'action_required': return 'Action needed';
       case 'disconnected': return 'Disconnected';
       case 'session_expired': return 'Session expired';
-      case 'error': return 'Error';
+      case 'error': return 'Needs pairing';
       default: return state;
     }
   }
   detailLine(c: Connector) {
     if (c.state === 'session_expired') return 'Re-login needed — the account signed this session out.';
+    if (c.state === 'error') return c.detail?.includes('timed out') ? 'The pairing code expired — tap Retry to get a fresh one.' : (c.detail || 'Pairing needed.');
     switch (c.detail) {
-      case 'needs_qr': return 'Scan the QR below to pair this account.';
+      case 'needs_qr': return 'Tap Pair to scan a QR and link this account.';
       case 'needs_code': return 'Waiting for the login code.';
       case 'needs_2fa': return 'Two-factor code required.';
       case 'needs_challenge': return 'Confirm the security challenge (SMS/email).';
       case 'needs_password': return 'Password required.';
-      default: return c.state === 'error' ? (c.detail || 'Something went wrong.') : '';
+      default: return '';
     }
   }
 }

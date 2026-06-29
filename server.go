@@ -118,6 +118,7 @@ func (s *Server) routes() http.Handler {
 	// Connectors (comms client) — live per-transport status + WhatsApp pairing QR.
 	mux.HandleFunc("GET /api/connectors", auth(s.handleConnectors))
 	mux.HandleFunc("GET /api/connectors/{transport}/qr", auth(s.handleConnectorQR))
+	mux.HandleFunc("POST /api/connectors/{transport}/{action}", auth(s.handleConnectorAction))
 
 	// Triage groups (agent client) — per-app schedules CRUD.
 	mux.HandleFunc("GET /api/triage/groups", auth(s.handleTriageGroupsList))

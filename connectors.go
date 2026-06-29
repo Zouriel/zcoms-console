@@ -42,6 +42,16 @@ func (s *Server) handleConnectors(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"connectors": out})
 }
 
+// handleConnectorAction runs a connect/disconnect action on a transport
+// ({action} is e.g. "reconnect" to re-arm a fresh WhatsApp QR, or "logout").
+func (s *Server) handleConnectorAction(w http.ResponseWriter, r *http.Request) {
+	if err := s.comms.ConnectorAction(r.PathValue("transport"), r.PathValue("action")); err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 // handleConnectorQR renders the named transport's current pairing QR as a PNG
 // (WhatsApp). 404 when there's no QR to show — the page only requests it while
 // the connector is in action_required/needs_qr.
