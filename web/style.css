@@ -84,3 +84,18 @@ th { color: #9aa0ad; font-weight: 600; }
   max-width: 360px;
 }
 .tag { font-size: .75rem; background: #2c2f38; padding: .1rem .4rem; border-radius: 4px; }
+
+/* Commerce sub-navigation + panels */
+.subnav { display: flex; gap: .25rem; margin: .75rem 0 1rem; flex-wrap: wrap; }
+.subnav button { background: #2c2f38; }
+.subnav button.active { background: #2f6fed; }
+.commerce-panel details.card { max-width: 640px; }
+.commerce-panel details.card summary { cursor: pointer; font-weight: 600; }
+.commerce-raw {
+  background: #0f1115;
+  border: 1px solid #2c2f38;
+  border-radius: 6px;
+  padding: .75rem;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}

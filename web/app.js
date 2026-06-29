@@ -356,4 +356,269 @@ views.settings = async (view) => {
   view.append(tbl);
 };
 
+// ---- Commerce (proxied to the zcoms-commerce module over commerce.sock) ----
+//
+// Reads return {json, text}: json is the runtime payload for list/show, text is
+// the raw human reply for status/reports. Writes return {reply}. Everything
+// degrades to a clear error when the commerce module isn't installed/running.
+
+let commerceSection = "stores";
+let commerceStoreId = "";
+
+// Pull the array out of a runtime read payload ({items:[…]} or a bare array).
+function commerceItems(data) {
+  const j = data && data.json;
+  if (Array.isArray(j)) return j;
+  if (j && Array.isArray(j.items)) return j.items;
+  return [];
+}
+
+// Render a list of homogeneous objects as a table; actionsFn(item) may return an
+// element (or null) for a trailing actions column. Falls back to the raw text
+// reply when there's no structured payload (e.g. runtime not configured).
+function commerceTable(container, data, opts = {}) {
+  const items = commerceItems(data);
+  if (!items.length) {
+    if (data && data.text) container.append(el("pre", { className: "commerce-raw", textContent: data.text }));
+    else container.append(el("p", { className: "muted", textContent: "Nothing to show." }));
+    return;
+  }
+  const cols = opts.columns || [...new Set(items.flatMap((it) => Object.keys(it)))].slice(0, 8);
+  const tbl = el("table");
+  const head = el("tr");
+  for (const c of cols) head.append(el("th", { textContent: c }));
+  if (opts.actionsFn) head.append(el("th", { textContent: "" }));
+  tbl.append(head);
+  for (const it of items) {
+    const tr = el("tr");
+    for (const c of cols) {
+      const v = it[c];
+      tr.append(el("td", { textContent: v === undefined || v === null ? "" : (typeof v === "object" ? JSON.stringify(v) : String(v)) }));
+    }
+    if (opts.actionsFn) {
+      const a = opts.actionsFn(it);
+      tr.append(el("td", {}, a || el("span", {})));
+    }
+    tbl.append(tr);
+  }
+  container.append(tbl);
+}
+
+function storeIdBar(onLoad) {
+  const inp = el("input", { placeholder: "store id", value: commerceStoreId, style: "width:16rem" });
+  const btn = el("button", { textContent: "Load" });
+  btn.onclick = () => { commerceStoreId = inp.value.trim(); onLoad(commerceStoreId); };
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") btn.click(); });
+  return el("div", { className: "toolbar" }, el("span", { textContent: "Store:" }), inp, btn);
+}
+
+views.commerce = async (view) => {
+  // Runtime connection status line.
+  const status = el("div", { className: "muted", textContent: "checking runtime…" });
+  view.append(status);
+  api("GET", "/api/commerce/status")
+    .then((d) => { status.textContent = "Runtime: " + (d.text || "").replace(/\n/g, "  "); })
+    .catch((e) => { status.textContent = e.message; });
+
+  // Sub-navigation.
+  const sections = ["stores", "products", "orders", "refunds", "billing", "reports"];
+  const subnav = el("nav", { className: "subnav" });
+  const panel = el("div", { className: "commerce-panel" });
+  const renderers = {};
+  const select = (name) => {
+    commerceSection = name;
+    subnav.querySelectorAll("button").forEach((b) => b.classList.toggle("active", b.dataset.s === name));
+    panel.replaceChildren();
+    renderers[name](panel).catch(fail);
+  };
+  for (const s of sections) {
+    const b = el("button", { textContent: s[0].toUpperCase() + s.slice(1) });
+    b.dataset.s = s;
+    b.onclick = () => select(s);
+    subnav.append(b);
+  }
+  view.append(subnav, panel);
+
+  // --- Stores ---
+  renderers.stores = async (root) => {
+    // New-store disclosure (mirrors the module's wizard as one form).
+    const det = el("details", { className: "card", style: "margin:0 0 1rem" });
+    det.append(el("summary", { textContent: "New store" }));
+    const f = {
+      name: el("input", { placeholder: "store name" }),
+      slug: el("input", { placeholder: "slug (optional — derived from name)" }),
+      merchant: el("input", { placeholder: "merchant @handle" }),
+      type: el("select"),
+      price: el("input", { type: "number", placeholder: "monthly price (Stars)", value: "0" }),
+      token: el("input", { placeholder: "bot token (from BotFather)" }),
+    };
+    for (const t of ["files", "services", "subscriptions", "mixed"]) f.type.append(el("option", { value: t, textContent: t }));
+    const create = el("button", { textContent: "Create store" });
+    create.onclick = async () => {
+      try {
+        const r = await api("POST", "/api/commerce/stores", {
+          name: f.name.value, slug: f.slug.value, merchant_handle: f.merchant.value,
+          store_type: f.type.value, monthly_price_stars: Number(f.price.value || 0), bot_token: f.token.value,
+        });
+        toast("store created");
+        if (r.reply) alert(r.reply);
+        select("stores");
+      } catch (e) { fail(e); }
+    };
+    det.append(labeled("Name", f.name), labeled("Slug", f.slug), labeled("Merchant", f.merchant),
+      labeled("Type", f.type), labeled("Price", f.price), labeled("Bot token", f.token),
+      el("div", { className: "toolbar" }, create));
+    root.append(det);
+
+    const data = await api("GET", "/api/commerce/stores");
+    commerceTable(root, data, {
+      actionsFn: (st) => {
+        const id = st.id ?? st.store_id ?? st.slug;
+        const wrap = el("div", { className: "row-actions" });
+        for (const act of ["activate", "suspend", "archive"]) {
+          const b = el("button", { className: act === "archive" ? "danger" : "ghost", textContent: act });
+          b.onclick = async () => {
+            if (act === "archive" && !confirm(`Archive store ${id}? This is terminal.`)) return;
+            try { const r = await api("POST", `/api/commerce/stores/${encodeURIComponent(id)}/${act}`); toast(r.reply || act); select("stores"); }
+            catch (e) { fail(e); }
+          };
+          wrap.append(b);
+        }
+        return wrap;
+      },
+    });
+  };
+
+  // --- Products ---
+  renderers.products = async (root) => {
+    const out = el("div");
+    const load = async (id) => {
+      out.replaceChildren();
+      if (!id) return;
+      let data; try { data = await api("GET", `/api/commerce/products?store_id=${encodeURIComponent(id)}`); }
+      catch (e) { return fail(e); }
+      commerceTable(out, data, {
+        actionsFn: (p) => {
+          const pid = p.id ?? p.product_id;
+          const del = el("button", { className: "danger", textContent: "Delete" });
+          del.onclick = async () => {
+            if (!confirm(`Delete product ${pid}?`)) return;
+            try { const r = await api("DELETE", `/api/commerce/products/${encodeURIComponent(pid)}`); toast(r.reply || "deleted"); load(id); }
+            catch (e) { fail(e); }
+          };
+          return del;
+        },
+      });
+    };
+    // New product (raw JSON — the runtime product schema varies by store type).
+    const det = el("details", { className: "card", style: "margin:0 0 1rem" });
+    det.append(el("summary", { textContent: "New product (JSON)" }));
+    const ta = el("textarea", { placeholder: '{"store_id":"…","type":"file","title":"…","price_stars":100}', rows: 4 });
+    const add = el("button", { textContent: "Create product" });
+    add.onclick = async () => {
+      let obj; try { obj = JSON.parse(ta.value); } catch (e) { return toast("invalid JSON"); }
+      try { const r = await api("POST", "/api/commerce/products", obj); toast(r.reply || "created"); if (commerceStoreId) load(commerceStoreId); }
+      catch (e) { fail(e); }
+    };
+    det.append(ta, el("div", { className: "toolbar" }, add));
+    root.append(storeIdBar(load), det, out);
+    if (commerceStoreId) load(commerceStoreId);
+  };
+
+  // --- Orders ---
+  renderers.orders = async (root) => {
+    const out = el("div");
+    const load = async (id) => {
+      out.replaceChildren();
+      if (!id) return;
+      let data; try { data = await api("GET", `/api/commerce/orders?store_id=${encodeURIComponent(id)}`); }
+      catch (e) { return fail(e); }
+      commerceTable(out, data, {
+        actionsFn: (o) => {
+          const oid = o.id ?? o.order_id;
+          const b = el("button", { className: "ghost", textContent: "Show" });
+          b.onclick = async () => {
+            try { const d = await api("GET", `/api/commerce/orders/${encodeURIComponent(oid)}`); alert(d.text || JSON.stringify(d.json, null, 2)); }
+            catch (e) { fail(e); }
+          };
+          return b;
+        },
+      });
+    };
+    root.append(storeIdBar(load), out);
+    if (commerceStoreId) load(commerceStoreId);
+  };
+
+  // --- Refunds ---
+  renderers.refunds = async (root) => {
+    const out = el("div");
+    const load = async (id) => {
+      out.replaceChildren();
+      let data; try { data = await api("GET", "/api/commerce/refunds" + (id ? `?store_id=${encodeURIComponent(id)}` : "")); }
+      catch (e) { return fail(e); }
+      commerceTable(out, data, {
+        actionsFn: (rf) => {
+          const rid = rf.id ?? rf.refund_id;
+          const wrap = el("div", { className: "row-actions" });
+          const ok = el("button", { textContent: "Approve" });
+          ok.onclick = async () => {
+            if (!confirm(`Approve refund ${rid}? This refunds Stars.`)) return;
+            try { const r = await api("POST", `/api/commerce/refunds/${encodeURIComponent(rid)}/approve`); toast(r.reply || "approved"); load(commerceStoreId); }
+            catch (e) { fail(e); }
+          };
+          const no = el("button", { className: "danger", textContent: "Deny" });
+          no.onclick = async () => {
+            const reason = prompt("Denial reason (optional):") || "";
+            try { const r = await api("POST", `/api/commerce/refunds/${encodeURIComponent(rid)}/deny`, { reason }); toast(r.reply || "denied"); load(commerceStoreId); }
+            catch (e) { fail(e); }
+          };
+          wrap.append(ok, no);
+          return wrap;
+        },
+      });
+    };
+    root.append(el("div", { className: "toolbar" }, el("span", { className: "muted", textContent: "All refunds, or filter by store:" })),
+      storeIdBar(load), out);
+    load(commerceStoreId);
+  };
+
+  // --- Billing ---
+  renderers.billing = async (root) => {
+    const out = el("div");
+    const load = async (id) => {
+      out.replaceChildren();
+      if (!id) return;
+      const inv = el("button", { textContent: "Send invoice" });
+      inv.onclick = async () => {
+        try { const r = await api("POST", "/api/commerce/billing/invoice", { store_id: id }); toast(r.reply || "invoice sent"); load(id); }
+        catch (e) { fail(e); }
+      };
+      out.append(el("div", { className: "toolbar" }, inv));
+      let data; try { data = await api("GET", `/api/commerce/billing?store_id=${encodeURIComponent(id)}`); }
+      catch (e) { return fail(e); }
+      commerceTable(out, data);
+    };
+    root.append(storeIdBar(load), out);
+    if (commerceStoreId) load(commerceStoreId);
+  };
+
+  // --- Reports ---
+  renderers.reports = async (root) => {
+    const out = el("pre", { className: "commerce-raw", textContent: "" });
+    const plat = el("button", { textContent: "Platform report" });
+    plat.onclick = async () => {
+      try { const d = await api("GET", "/api/commerce/report/platform"); out.textContent = d.text || JSON.stringify(d.json, null, 2); }
+      catch (e) { fail(e); }
+    };
+    root.append(el("div", { className: "toolbar" }, plat),
+      storeIdBar(async (id) => {
+        if (!id) return;
+        try { const d = await api("GET", `/api/commerce/report/store?store_id=${encodeURIComponent(id)}`); out.textContent = d.text || JSON.stringify(d.json, null, 2); }
+        catch (e) { fail(e); }
+      }), out);
+  };
+
+  select(commerceSection);
+};
+
 boot().catch((e) => { showLogin(false); console.error(e); });

@@ -96,6 +96,28 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /api/settings", auth(s.handleSettingsSet))
 	mux.HandleFunc("POST /api/password", auth(s.handlePasswordSet))
 
+	// Commerce (core-only module, proxied over commerce.sock) — stores,
+	// products, orders, refunds, billing, reports + their admin actions. Every
+	// handler degrades to "module not running" when commerce isn't installed.
+	mux.HandleFunc("GET /api/commerce/status", auth(s.handleCommerceStatus))
+	mux.HandleFunc("GET /api/commerce/stores", auth(s.handleCommerceStores))
+	mux.HandleFunc("POST /api/commerce/stores", auth(s.handleCommerceStoreCreate))
+	mux.HandleFunc("GET /api/commerce/stores/{id}", auth(s.handleCommerceStoreShow))
+	mux.HandleFunc("POST /api/commerce/stores/{id}/{action}", auth(s.handleCommerceStoreTransition))
+	mux.HandleFunc("GET /api/commerce/products", auth(s.handleCommerceProducts))
+	mux.HandleFunc("POST /api/commerce/products", auth(s.handleCommerceProductCreate))
+	mux.HandleFunc("PUT /api/commerce/products/{id}", auth(s.handleCommerceProductUpdate))
+	mux.HandleFunc("DELETE /api/commerce/products/{id}", auth(s.handleCommerceProductDelete))
+	mux.HandleFunc("GET /api/commerce/orders", auth(s.handleCommerceOrders))
+	mux.HandleFunc("GET /api/commerce/orders/{id}", auth(s.handleCommerceOrderShow))
+	mux.HandleFunc("GET /api/commerce/refunds", auth(s.handleCommerceRefunds))
+	mux.HandleFunc("POST /api/commerce/refunds/{id}/approve", auth(s.handleCommerceRefundApprove))
+	mux.HandleFunc("POST /api/commerce/refunds/{id}/deny", auth(s.handleCommerceRefundDeny))
+	mux.HandleFunc("GET /api/commerce/billing", auth(s.handleCommerceBilling))
+	mux.HandleFunc("POST /api/commerce/billing/invoice", auth(s.handleCommerceBillingInvoice))
+	mux.HandleFunc("GET /api/commerce/report/platform", auth(s.handleCommerceReportPlatform))
+	mux.HandleFunc("GET /api/commerce/report/store", auth(s.handleCommerceReportStore))
+
 	return mux
 }
 
