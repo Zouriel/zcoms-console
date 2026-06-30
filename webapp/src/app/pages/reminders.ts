@@ -7,63 +7,43 @@ import { UI } from '../core/ui';
 
 interface Reminder {
   id: number;
-  target_name?: string;
-  target_transport: string;
-  task_text: string;
-  kind: string;
-  recur_spec?: string;
-  deadline_bound: boolean;
+  from_name?: string;
+  recipient_transport: string;
+  recipient_name?: string;
+  task: string;
+  carry_over?: string;
   state: string;
   next_at?: string;
-  attempts: number;
+  runs: number;
 }
-interface RConfig {
-  enabled: boolean; voice: string;
-  first_nudge_mins: number; followup_mins: number;
-  deadline_lead_mins: number; deadline_after_mins: number; max_nudges: number;
-}
+interface RConfig { enabled: boolean; max_runs: number; reply_wait_mins: number; }
 interface REvent { id: number; reminder_id: number; at: string; kind: string; detail?: string; }
 
-const ACTIVE = ['scheduled', 'pre_reminded', 'awaiting_confirm', 'snoozed'];
-const TONE: Record<string, UiStatus> = {
-  scheduled: 'primary', pre_reminded: 'primary', snoozed: 'primary',
-  awaiting_confirm: 'warning', done: 'success', missed: 'danger', cancelled: 'neutral',
-};
-const VOICES = [{ label: 'Agent (written each time)', value: 'agent' }, { label: 'Simple (templates)', value: 'simple' }];
+const TONE: Record<string, UiStatus> = { active: 'primary', done: 'success', cancelled: 'neutral' };
 
 @Component({
   selector: 'app-reminders',
   imports: [FormsModule, ...UI],
   template: `
     <div class="page-head">
-      <ui-text variant="caption" class="muted">stateful reminders the agent drives — it nudges, checks in, motivates, and only closes when the task is actually done</ui-text>
+      <ui-text variant="caption" class="muted">an agent drives each reminder one run at a time: it composes the message, waits for the reply, and leaves itself a note for next time</ui-text>
     </div>
 
-    <!-- Settings / tweaks -->
     <ui-card padding="md">
       <ui-text variant="h4">Settings</ui-text>
       @if (cfg(); as c) {
         <div class="grid">
           <label class="sw"><ui-switch [(ngModel)]="c.enabled"></ui-switch> Reminders enabled</label>
-          <ui-form-field label="Voice" hint="how the messages are written">
-            <ui-select [options]="voices" [(ngModel)]="c.voice"></ui-select>
+          <ui-form-field label="Max runs" hint="safety cap per reminder">
+            <ui-input inputmode="numeric" [(ngModel)]="c.max_runs"></ui-input>
           </ui-form-field>
-          <ui-form-field label="First-nudge delay (min)" hint="when no time is given">
-            <ui-input inputmode="numeric" [(ngModel)]="c.first_nudge_mins"></ui-input>
-          </ui-form-field>
-          <ui-form-field label="Follow-up gap (min)" hint="before 'did you do it?'">
-            <ui-input inputmode="numeric" [(ngModel)]="c.followup_mins"></ui-input>
-          </ui-form-field>
-          <ui-form-field label="Deadline lead (min)" hint="nudge before a timed event">
-            <ui-input inputmode="numeric" [(ngModel)]="c.deadline_lead_mins"></ui-input>
-          </ui-form-field>
-          <ui-form-field label="Deadline after (min)" hint="ask how it went, after">
-            <ui-input inputmode="numeric" [(ngModel)]="c.deadline_after_mins"></ui-input>
-          </ui-form-field>
-          <ui-form-field label="Max nudges" hint="chase cap for open tasks">
-            <ui-input inputmode="numeric" [(ngModel)]="c.max_nudges"></ui-input>
+          <ui-form-field label="Reply wait (min)" hint="how long a run waits for the reply">
+            <ui-input inputmode="numeric" [(ngModel)]="c.reply_wait_mins"></ui-input>
           </ui-form-field>
         </div>
+        <ui-text variant="caption" class="muted" style="display:block;margin-top:8px">
+          Tone, timing and wording are decided by the Reminder assistant agent — edit its prompt + backend on the Personas page.
+        </ui-text>
         <div class="row">
           <span class="spacer"></span>
           <ui-button variant="primary" [disabled]="saving()" (click)="saveCfg(c)">Save settings</ui-button>
@@ -73,37 +53,36 @@ const VOICES = [{ label: 'Agent (written each time)', value: 'agent' }, { label:
 
     <div style="height:16px"></div>
 
-    <!-- Quick create -->
     <ui-card padding="md">
       <ui-text variant="h4">New reminder</ui-text>
       <div class="create">
         <span class="prefix">remind</span>
-        <ui-input class="grow" [(ngModel)]="line" placeholder="me to water the plants in 20 min  ·  Sara to send the invoice  ·  me about the 4pm call"></ui-input>
+        <ui-input class="grow" [(ngModel)]="line" placeholder="me to water the plants in 20 min  ·  Sara to send the invoice  ·  me to get ready for class at 6"></ui-input>
         <ui-button variant="primary" [disabled]="!line.trim()" (click)="create()">Add</ui-button>
       </div>
     </ui-card>
 
     <div style="height:16px"></div>
 
-    <!-- List + logs -->
     <ui-card padding="md">
       @if (loading()) { <ui-spinner></ui-spinner> } @else {
         <div class="tbl-scroll"><table class="tbl">
-          <thead><tr><th>Status</th><th>To</th><th>Task</th><th>When</th><th style="width:1%"></th></tr></thead>
+          <thead><tr><th>Status</th><th>To</th><th>Task</th><th>Agent's note</th><th>Next run</th><th style="width:1%"></th></tr></thead>
           <tbody>
             @for (r of reminders(); track r.id) {
               <tr>
                 <td><ui-badge [tone]="tone(r.state)">{{ r.state }}</ui-badge></td>
-                <td>{{ r.target_name || 'you' }}<span class="muted"> · {{ r.target_transport }}</span></td>
-                <td>{{ r.task_text }}@if (r.kind === 'recurring') { <span class="muted"> ({{ r.recur_spec }})</span> }</td>
-                <td class="muted">{{ when(r) }}</td>
+                <td>{{ r.recipient_name || 'you' }}<span class="muted"> · {{ r.recipient_transport }}</span></td>
+                <td>{{ r.task }}</td>
+                <td class="muted note">{{ r.carry_over || '—' }}</td>
+                <td class="muted">{{ r.state === 'active' ? ts(r.next_at) : '—' }}</td>
                 <td class="actions">
                   <ui-button variant="ghost" size="sm" (click)="toggleLog(r.id)">{{ open().has(r.id) ? 'Hide' : 'Log' }}</ui-button>
-                  @if (isActive(r.state)) { <ui-button variant="destructive" size="sm" (click)="cancel(r)">Cancel</ui-button> }
+                  @if (r.state === 'active') { <ui-button variant="destructive" size="sm" (click)="cancel(r)">Cancel</ui-button> }
                 </td>
               </tr>
               @if (open().has(r.id)) {
-                <tr class="logrow"><td colspan="5">
+                <tr class="logrow"><td colspan="6">
                   @if (events()[r.id]; as evs) {
                     @if (evs.length) {
                       <ul class="log">
@@ -115,7 +94,7 @@ const VOICES = [{ label: 'Agent (written each time)', value: 'agent' }, { label:
                   } @else { <ui-spinner></ui-spinner> }
                 </td></tr>
               }
-            } @empty { <tr><td colspan="5" class="empty">No reminders yet — add one above or text the agent.</td></tr> }
+            } @empty { <tr><td colspan="6" class="empty">No reminders yet — add one above or text the agent.</td></tr> }
           </tbody>
         </table></div>
       }
@@ -129,6 +108,7 @@ const VOICES = [{ label: 'Agent (written each time)', value: 'agent' }, { label:
     .create { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
     .create .prefix { color: var(--ui-color-text-muted); font-family: var(--ui-font-mono, monospace); }
     .grow { flex: 1; }
+    .note { max-width: 280px; }
     .actions { display: flex; gap: 6px; justify-content: flex-end; }
     .logrow td { background: var(--ui-color-surface-raised); }
     .log { margin: 4px 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
@@ -145,18 +125,10 @@ export class RemindersPage {
   loading = signal(true);
   saving = signal(false);
   line = '';
-  voices = VOICES;
 
   constructor() { this.load(); this.loadCfg(); }
 
   tone(state: string): UiStatus { return TONE[state] || 'neutral'; }
-  isActive(state: string) { return ACTIVE.includes(state); }
-  when(r: Reminder) {
-    if (!this.isActive(r.state)) return '—';
-    if (!r.next_at) return 'soon';
-    const verb = r.state === 'awaiting_confirm' ? 're-check' : 'next';
-    return `${verb} ${this.ts(r.next_at)}`;
-  }
   ts(iso?: string) { return iso ? new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
 
   async load() {
@@ -173,10 +145,7 @@ export class RemindersPage {
   async saveCfg(c: RConfig) {
     this.saving.set(true);
     const fields: [string, string][] = [
-      ['enabled', String(c.enabled)], ['voice', c.voice],
-      ['first_nudge_mins', String(c.first_nudge_mins)], ['followup_mins', String(c.followup_mins)],
-      ['deadline_lead_mins', String(c.deadline_lead_mins)], ['deadline_after_mins', String(c.deadline_after_mins)],
-      ['max_nudges', String(c.max_nudges)],
+      ['enabled', String(c.enabled)], ['max_runs', String(c.max_runs)], ['reply_wait_mins', String(c.reply_wait_mins)],
     ];
     try {
       for (const [field, value] of fields) await this.api.post('/api/reminders/settings', { field, value });
@@ -210,10 +179,7 @@ export class RemindersPage {
   }
 
   async cancel(r: Reminder) {
-    try {
-      await this.api.post(`/api/reminders/${r.id}/cancel`);
-      this.toast.success('Cancelled');
-      await this.load();
-    } catch (e: any) { this.toast.danger(e.message, 'Cancel failed'); }
+    try { await this.api.post(`/api/reminders/${r.id}/cancel`); this.toast.success('Cancelled'); await this.load(); }
+    catch (e: any) { this.toast.danger(e.message, 'Cancel failed'); }
   }
 }
