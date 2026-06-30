@@ -7,15 +7,17 @@ import { UI } from '../core/ui';
 interface Contact {
   id: number;
   name: string;
+  aliases?: string[];
   phone?: string;
   email?: string;
   telegram?: string;
   whatsapp?: string;
+  instagram?: string;
   discord?: string;
   viber?: string;
   note?: string;
 }
-const blank = (): Contact => ({ id: 0, name: '', phone: '', email: '', telegram: '', whatsapp: '', discord: '', viber: '', note: '' });
+const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: '', telegram: '', whatsapp: '', instagram: '', discord: '', viber: '', note: '' });
 
 @Component({
   selector: 'app-contacts',
@@ -30,11 +32,12 @@ const blank = (): Contact => ({ id: 0, name: '', phone: '', email: '', telegram:
     <ui-card padding="md">
       @if (loading()) { <ui-spinner></ui-spinner> } @else {
         <div class="tbl-scroll"><table class="tbl">
-          <thead><tr><th>Name</th><th>Phone</th><th>Telegram</th><th>Email</th><th style="width:1%"></th></tr></thead>
+          <thead><tr><th>Name</th><th>Aliases</th><th>Phone</th><th>Telegram</th><th>Email</th><th style="width:1%"></th></tr></thead>
           <tbody>
             @for (c of contacts(); track c.id) {
               <tr>
                 <td>{{ c.name }}</td>
+                <td class="muted">{{ (c.aliases && c.aliases.length) ? c.aliases.join(', ') : '—' }}</td>
                 <td class="muted">{{ c.phone || '—' }}</td>
                 <td class="muted">{{ c.telegram || '—' }}</td>
                 <td class="muted">{{ c.email || '—' }}</td>
@@ -45,7 +48,7 @@ const blank = (): Contact => ({ id: 0, name: '', phone: '', email: '', telegram:
                   </div>
                 </td>
               </tr>
-            } @empty { <tr><td colspan="5" class="empty">No contacts yet.</td></tr> }
+            } @empty { <tr><td colspan="6" class="empty">No contacts yet.</td></tr> }
           </tbody>
         </table></div>
       }
@@ -54,6 +57,9 @@ const blank = (): Contact => ({ id: 0, name: '', phone: '', email: '', telegram:
     <ui-modal [(open)]="editing" [title]="form.id ? 'Edit contact' : 'New contact'">
       <div class="grid">
         <ui-form-field label="Name"><ui-input class="f" [(ngModel)]="form.name" placeholder="e.g. Ali"></ui-input></ui-form-field>
+        <ui-form-field label="Aliases" hint="comma-separated nicknames — must be unique across all contacts">
+          <ui-input class="f" [(ngModel)]="aliasesText" placeholder="e.g. Aliyya, Ali bro"></ui-input>
+        </ui-form-field>
         <ui-form-field label="Mobile number" hint="reaches Telegram / WhatsApp / Viber">
           <ui-input class="f" [(ngModel)]="form.phone" placeholder="+960 …"></ui-input>
         </ui-form-field>
@@ -63,6 +69,9 @@ const blank = (): Contact => ({ id: 0, name: '', phone: '', email: '', telegram:
         </ui-form-field>
         <ui-form-field label="WhatsApp" hint="id/number — else the phone is used">
           <ui-input class="f" [(ngModel)]="form.whatsapp" placeholder="defaults to phone"></ui-input>
+        </ui-form-field>
+        <ui-form-field label="Instagram" hint="@handle — no phone fallback (not active yet)">
+          <ui-input class="f" [(ngModel)]="form.instagram" placeholder="@handle"></ui-input>
         </ui-form-field>
         <ui-form-field label="Discord" hint="needs its own id — no phone fallback (not active yet)">
           <ui-input class="f" [(ngModel)]="form.discord" placeholder="discord id"></ui-input>
@@ -103,6 +112,12 @@ export class ContactsPage {
   deleting = signal(false);
   target = signal<Contact | null>(null);
   form: Contact = blank();
+
+  // Aliases are edited as one comma-separated field, stored as a string[].
+  get aliasesText(): string { return (this.form.aliases || []).join(', '); }
+  set aliasesText(v: string) {
+    this.form.aliases = v.split(',').map(s => s.trim()).filter(Boolean);
+  }
 
   constructor() { this.load(); }
 
