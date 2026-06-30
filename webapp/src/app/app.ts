@@ -65,6 +65,7 @@ export class App {
         { label: 'Connectors', value: 'connectors' },
         { label: 'Triage', value: 'triage' },
         { label: 'Reminders', value: 'reminders' },
+        { label: 'Messages', value: 'messages' },
         { label: 'Commerce', value: 'commerce' },
         { label: 'Settings', value: 'settings' },
       ],

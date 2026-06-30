@@ -111,6 +111,10 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /api/allowlist/from-contact", auth(s.handleAllowlistAddContact))
 	mux.HandleFunc("DELETE /api/allowlist/{id}", auth(s.handleAllowlistRemove))
 
+	// Phrases (agent client) — editable canned bridge messages.
+	mux.HandleFunc("GET /api/phrases", auth(s.handlePhrasesList))
+	mux.HandleFunc("POST /api/phrases", auth(s.handlePhraseSet))
+
 	// Settings (agent client) — key/value editor + password change.
 	mux.HandleFunc("GET /api/settings", auth(s.handleSettingsList))
 	mux.HandleFunc("POST /api/settings", auth(s.handleSettingsSet))

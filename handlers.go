@@ -409,6 +409,41 @@ func (s *Server) handleReminderSettingsSet(w http.ResponseWriter, r *http.Reques
 	s.agentCmd(w, "remind settings "+field+" "+val)
 }
 
+// --- Phrases (agent client) — editable canned bridge messages ---
+
+func (s *Server) handlePhrasesList(w http.ResponseWriter, r *http.Request) {
+	ps, err := s.agent.Phrases()
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, ps)
+}
+
+func (s *Server) handlePhraseSet(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	key, val := strings.TrimSpace(body.Key), strings.TrimSpace(body.Value)
+	if key == "" || strings.ContainsAny(key, " \t\n") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "a phrase key is required"})
+		return
+	}
+	if val == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "the message can't be empty"})
+		return
+	}
+	if strings.ContainsAny(val, "\t\n") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "the message must be a single line"})
+		return
+	}
+	s.agentCmd(w, "settings set phrase."+key+" "+val)
+}
+
 // --- Settings (agent client) ---
 
 func (s *Server) handleSettingsList(w http.ResponseWriter, r *http.Request) {

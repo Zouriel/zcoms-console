@@ -10,6 +10,7 @@ export const routes: Routes = [
   { path: 'connectors', loadComponent: () => import('./pages/connectors').then((m) => m.ConnectorsPage) },
   { path: 'triage', loadComponent: () => import('./pages/triage').then((m) => m.TriagePage) },
   { path: 'reminders', loadComponent: () => import('./pages/reminders').then((m) => m.RemindersPage) },
+  { path: 'messages', loadComponent: () => import('./pages/messages').then((m) => m.MessagesPage) },
   { path: 'commerce', loadComponent: () => import('./pages/commerce').then((m) => m.CommercePage) },
   { path: 'settings', loadComponent: () => import('./pages/settings').then((m) => m.SettingsPage) },
   { path: '**', redirectTo: 'contacts' },
