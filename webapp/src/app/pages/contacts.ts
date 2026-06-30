@@ -15,9 +15,10 @@ interface Contact {
   instagram?: string;
   discord?: string;
   viber?: string;
+  github?: string;
   note?: string;
 }
-const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: '', telegram: '', whatsapp: '', instagram: '', discord: '', viber: '', note: '' });
+const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: '', telegram: '', whatsapp: '', instagram: '', discord: '', viber: '', github: '', note: '' });
 
 @Component({
   selector: 'app-contacts',
@@ -78,6 +79,9 @@ const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: 
         </ui-form-field>
         <ui-form-field label="Viber" hint="id — else the phone is used (not active yet)">
           <ui-input class="f" [(ngModel)]="form.viber" placeholder="defaults to phone"></ui-input>
+        </ui-form-field>
+        <ui-form-field label="GitHub" hint="handle (contact info)">
+          <ui-input class="f" [(ngModel)]="form.github" placeholder="octocat"></ui-input>
         </ui-form-field>
         <ui-form-field label="Note" class="span2"><ui-input class="f" [(ngModel)]="form.note" placeholder="optional"></ui-input></ui-form-field>
       </div>

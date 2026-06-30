@@ -105,9 +105,10 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/personas", auth(s.handlePersonasList))
 	mux.HandleFunc("POST /api/personas/{key}", auth(s.handlePersonaSet))
 
-	// Allowlist (agent client) — add/list/remove.
+	// Allowlist (agent client) — add/list/remove + add-every-channel-of-a-contact.
 	mux.HandleFunc("GET /api/allowlist", auth(s.handleAllowlistList))
 	mux.HandleFunc("POST /api/allowlist", auth(s.handleAllowlistAdd))
+	mux.HandleFunc("POST /api/allowlist/from-contact", auth(s.handleAllowlistAddContact))
 	mux.HandleFunc("DELETE /api/allowlist/{id}", auth(s.handleAllowlistRemove))
 
 	// Settings (agent client) — key/value editor + password change.

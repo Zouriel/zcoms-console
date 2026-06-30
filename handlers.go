@@ -240,10 +240,7 @@ func (s *Server) handleAllowlistAdd(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &body) {
 		return
 	}
-	platform := strings.ToLower(strings.TrimSpace(body.Platform))
-	if platform != "whatsapp" {
-		platform = "telegram"
-	}
+	platform := allowPlatform(body.Platform)
 	handle := strings.TrimSpace(body.Handle)
 	if handle == "" || strings.ContainsAny(handle, "\t\n") {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "a handle is required"})
@@ -252,6 +249,90 @@ func (s *Server) handleAllowlistAdd(w http.ResponseWriter, r *http.Request) {
 	// The agent normalizes per platform (@-form for Telegram, digits for WhatsApp)
 	// and treats the trailing token as the role, so a spaced WhatsApp number is fine.
 	s.agentCmd(w, "allowlist add "+platform+" "+handle+" "+body.Role)
+}
+
+// allowMsgPlatforms is the set of messaging channels an allow-list entry can
+// target, mirrored from runner.AllowPlatforms (the console can't import the
+// agent's runner). Email/GitHub/Note are contact info, not channels.
+var allowMsgPlatforms = []string{"telegram", "whatsapp", "instagram", "discord", "viber"}
+
+// allowPlatform validates a platform name, defaulting unknown values to telegram.
+func allowPlatform(p string) string {
+	p = strings.ToLower(strings.TrimSpace(p))
+	for _, k := range allowMsgPlatforms {
+		if k == p {
+			return p
+		}
+	}
+	return "telegram"
+}
+
+// allowRole validates a role word, defaulting blank to read.
+func allowRole(r string) (string, bool) {
+	switch r = strings.ToLower(strings.TrimSpace(r)); r {
+	case "":
+		return "read", true
+	case "read", "confirm", "edit", "full":
+		return r, true
+	default:
+		return "", false
+	}
+}
+
+// handleAllowlistAddContact allow-lists a contact on *every* channel they have
+// (telegram/whatsapp/instagram/discord/viber, resolving each via Contact.Address
+// with its phone fallback), at one role. Picking a person from the directory
+// beats re-typing a number or handle per platform.
+func (s *Server) handleAllowlistAddContact(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ContactID int64  `json:"contact_id"`
+		Role      string `json:"role"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	role, ok := allowRole(body.Role)
+	if !ok {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "role must be read|confirm|edit|full"})
+		return
+	}
+	cs, err := s.comms.ListContacts()
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	var ct *client.Contact
+	for i := range cs {
+		if cs[i].ID == body.ContactID {
+			ct = &cs[i]
+			break
+		}
+	}
+	if ct == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "contact not found"})
+		return
+	}
+	var added, failed []string
+	for _, p := range allowMsgPlatforms {
+		addr := strings.TrimSpace(ct.Address(p))
+		if addr == "" {
+			continue
+		}
+		if _, err := s.agent.Command("allowlist add "+p+" "+addr+" "+role, ""); err != nil {
+			failed = append(failed, p+" ("+err.Error()+")")
+			continue
+		}
+		added = append(added, p)
+	}
+	if len(added) == 0 {
+		msg := ct.Name + " has no messaging channels to allow-list"
+		if len(failed) > 0 {
+			msg = "failed: " + strings.Join(failed, ", ")
+		}
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": msg})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"contact": ct.Name, "added": added, "failed": failed})
 }
 
 func (s *Server) handleAllowlistRemove(w http.ResponseWriter, r *http.Request) {

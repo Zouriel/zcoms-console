@@ -7,6 +7,7 @@ import { UiTable } from 'ui/table';
 import {
   UiInput, UiSelect, UiTextarea, UiFormField, UiSwitch, UiPasswordInput, UiSearchInput,
 } from 'ui/form';
+import { UiCombobox } from 'ui/combobox';
 import { UiText } from 'ui/text';
 import { UiBadge, UiChip } from 'ui/badge';
 import { UiModal, UiToastHost } from 'ui/dialog';
@@ -18,6 +19,6 @@ import { UiSpinner } from 'ui/spinner';
 export const UI = [
   UiButton, UiIconButton, UiCard, UiTable,
   UiInput, UiSelect, UiTextarea, UiFormField, UiSwitch, UiPasswordInput, UiSearchInput,
-  UiText, UiBadge, UiChip, UiModal, UiToastHost, UiAlert,
+  UiCombobox, UiText, UiBadge, UiChip, UiModal, UiToastHost, UiAlert,
   UiStack, UiGrid, UiContainer, UiSidebarLayout, UiSideNav, UiSpinner,
 ];
