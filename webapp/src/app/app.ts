@@ -64,6 +64,7 @@ export class App {
         { label: 'Allowlist', value: 'allowlist' },
         { label: 'Connectors', value: 'connectors' },
         { label: 'Triage', value: 'triage' },
+        { label: 'Reminders', value: 'reminders' },
         { label: 'Commerce', value: 'commerce' },
         { label: 'Settings', value: 'settings' },
       ],

@@ -340,6 +340,75 @@ func (s *Server) handleAllowlistRemove(w http.ResponseWriter, r *http.Request) {
 	s.agentCmd(w, "allowlist rm "+id)
 }
 
+// --- Reminders (agent client) — list + per-reminder log + cancel + live settings ---
+
+func (s *Server) handleRemindersList(w http.ResponseWriter, r *http.Request) {
+	rs, err := s.agent.Reminders()
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, rs)
+}
+
+func (s *Server) handleReminderEvents(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r, "id")
+	if !ok {
+		return
+	}
+	es, err := s.agent.ReminderEvents(id)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, es)
+}
+
+func (s *Server) handleReminderCancel(w http.ResponseWriter, r *http.Request) {
+	s.agentCmd(w, "remind cancel "+r.PathValue("id"))
+}
+
+func (s *Server) handleReminderCreate(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Line string `json:"line"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	line := strings.TrimSpace(body.Line)
+	if line == "" || strings.ContainsAny(line, "\t\n") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "a reminder line is required"})
+		return
+	}
+	s.agentCmd(w, "remind "+line)
+}
+
+func (s *Server) handleReminderSettingsGet(w http.ResponseWriter, r *http.Request) {
+	c, err := s.agent.ReminderConfig()
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, c)
+}
+
+func (s *Server) handleReminderSettingsSet(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Field string `json:"field"`
+		Value string `json:"value"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	field := strings.TrimSpace(body.Field)
+	val := strings.TrimSpace(body.Value)
+	if field == "" || strings.ContainsAny(field+" "+val, "\t\n") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "field and value required"})
+		return
+	}
+	s.agentCmd(w, "remind settings "+field+" "+val)
+}
+
 // --- Settings (agent client) ---
 
 func (s *Server) handleSettingsList(w http.ResponseWriter, r *http.Request) {

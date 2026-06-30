@@ -121,6 +121,14 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/connectors/{transport}/qr", auth(s.handleConnectorQR))
 	mux.HandleFunc("POST /api/connectors/{transport}/{action}", auth(s.handleConnectorAction))
 
+	// Reminders (agent client) — list + per-reminder log + cancel + live settings.
+	mux.HandleFunc("GET /api/reminders", auth(s.handleRemindersList))
+	mux.HandleFunc("POST /api/reminders", auth(s.handleReminderCreate))
+	mux.HandleFunc("GET /api/reminders/settings", auth(s.handleReminderSettingsGet))
+	mux.HandleFunc("POST /api/reminders/settings", auth(s.handleReminderSettingsSet))
+	mux.HandleFunc("GET /api/reminders/{id}/events", auth(s.handleReminderEvents))
+	mux.HandleFunc("POST /api/reminders/{id}/cancel", auth(s.handleReminderCancel))
+
 	// Triage groups (agent client) — per-app schedules CRUD.
 	mux.HandleFunc("GET /api/triage/groups", auth(s.handleTriageGroupsList))
 	mux.HandleFunc("POST /api/triage/groups", auth(s.handleTriageGroupSave))
