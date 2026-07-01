@@ -123,6 +123,7 @@ func (s *Server) routes() http.Handler {
 	// Connectors (comms client) — live per-transport status + WhatsApp pairing QR.
 	mux.HandleFunc("GET /api/connectors", auth(s.handleConnectors))
 	mux.HandleFunc("GET /api/connectors/{transport}/qr", auth(s.handleConnectorQR))
+	mux.HandleFunc("POST /api/connectors/instagram/credentials", auth(s.handleInstagramCredentials))
 	mux.HandleFunc("POST /api/connectors/{transport}/{action}", auth(s.handleConnectorAction))
 
 	// Reminders (agent client) — list + per-reminder log + cancel + live settings.
