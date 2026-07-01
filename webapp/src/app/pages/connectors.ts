@@ -1,4 +1,5 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Api } from '../core/api';
 import { UI } from '../core/ui';
 import { UiToastService } from 'ui/dialog';
@@ -14,10 +15,10 @@ interface Connector {
 }
 
 // Reserved transports the daemon doesn't register: shown as inert cards so the
-// roadmap is visible. Instagram lands in Phase C; Discord/Viber have no
-// real-account API (self-bot / commercial-only), so they're parked.
+// roadmap is visible. Discord/Viber have no real-account API (self-bot /
+// commercial-only), so they're parked. Instagram is now registered (it logs in
+// via username/password + 2FA/challenge rather than a QR).
 const RESERVED = [
-  { transport: 'instagram', label: 'Instagram', note: 'Coming soon — real personal account via the private API (Phase C).' },
   { transport: 'discord', label: 'Discord', note: 'No real-account API (a user token = a self-bot, ToS-bannable). Reserved.' },
   { transport: 'viber', label: 'Viber', note: 'No real-account API (bot/commercial only). Reserved.' },
 ];
@@ -26,7 +27,7 @@ const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsA
 
 @Component({
   selector: 'app-connectors',
-  imports: [...UI],
+  imports: [FormsModule, ...UI],
   template: `
     <div class="page-head">
       <ui-text variant="caption" class="muted">your connected accounts — live status, and pairing where an account needs it</ui-text>
@@ -51,6 +52,29 @@ const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsA
               <ui-button variant="primary" size="sm" (click)="openPairing(c.transport)">
                 {{ c.state === 'connected' ? 'Re-link' : (c.state === 'error' || c.state === 'session_expired' ? 'Retry pairing' : 'Pair ' + label(c.transport)) }}
               </ui-button>
+            </div>
+          }
+
+          @if (isInstagram(c)) {
+            <div style="margin-top:14px">
+              @if (c.state === 'action_required' && needsCode(c)) {
+                <div class="ig-code">
+                  <ui-input [(ngModel)]="igCode" placeholder="Enter the code" size="sm"></ui-input>
+                  <ui-button variant="primary" size="sm" [disabled]="busy() || !igCode.trim()" (click)="submitCode()">Submit code</ui-button>
+                </div>
+                <ui-text variant="caption" class="muted" style="display:block;margin-top:8px">
+                  Instagram sent a code (SMS / email / authenticator). Enter it to finish signing in.
+                </ui-text>
+              } @else if (c.state !== 'connected') {
+                <ui-button variant="primary" size="sm" [disabled]="busy()" (click)="igLogin()">
+                  {{ c.state === 'error' || c.state === 'session_expired' ? 'Log in again' : 'Log in' }}
+                </ui-button>
+                <ui-text variant="caption" class="muted" style="display:block;margin-top:8px">
+                  Unofficial private API — ban risk. Use a secondary account, ideally behind a proxy. Credentials live in ~/.config/zcoms/instagram.json.
+                </ui-text>
+              } @else {
+                <ui-button variant="ghost" size="sm" [disabled]="busy()" (click)="igLogout()">Log out</ui-button>
+              }
             </div>
           }
 
@@ -106,6 +130,8 @@ export class ConnectorsPage implements OnDestroy {
   reserved = RESERVED;
   qrModal = signal(false);
   qrTransport = signal('whatsapp');
+  igCode = '';
+  busy = signal(false);
   private tick = signal(0);
   private timer: any;
   private rearming = false;
@@ -173,8 +199,37 @@ export class ConnectorsPage implements OnDestroy {
     }
   }
 
-  // Which transports expose a pairing flow (QR-capable, not Telegram).
+  // Which transports expose a QR pairing flow (Telegram is always on; Instagram
+  // uses username/password, handled separately below).
   canPair(c: Connector) { return c.transport === 'whatsapp'; }
+
+  // Instagram uses a login + 2FA/challenge code flow instead of a QR.
+  isInstagram(c: Connector) { return c.transport === 'instagram'; }
+  needsCode(c: Connector) {
+    return c.detail === 'needs_2fa' || c.detail === 'needs_challenge' || c.detail === 'needs_code';
+  }
+
+  async igLogin() { await this.igAction('login'); }
+  async igLogout() { await this.igAction('logout'); }
+  async submitCode() {
+    const code = this.igCode.trim();
+    if (!code) return;
+    await this.igAction('code_' + encodeURIComponent(code));
+    this.igCode = '';
+  }
+
+  private async igAction(action: string) {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      await this.api.post(`/api/connectors/instagram/${action}`);
+      await this.load();
+    } catch (e: any) {
+      this.toast.danger(e.message, 'Instagram');
+    } finally {
+      this.busy.set(false);
+    }
+  }
 
   label(t: string) { return LABELS[t] || t; }
   qrSrc(t: string) { return `/api/connectors/${t}/qr?t=${this.tick()}`; }
