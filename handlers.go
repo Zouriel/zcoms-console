@@ -409,6 +409,36 @@ func (s *Server) handleReminderSettingsSet(w http.ResponseWriter, r *http.Reques
 	s.agentCmd(w, "remind settings "+field+" "+val)
 }
 
+// --- Morning agent (agent client) — the daily briefing toggle ---
+
+func (s *Server) handleMorningSettingsGet(w http.ResponseWriter, r *http.Request) {
+	enabled := true // absent means enabled, matching the agent default
+	if v, ok := s.setting("morning.enabled"); ok {
+		enabled = !(v == "false" || v == "0" || v == "off")
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"enabled": enabled})
+}
+
+func (s *Server) handleMorningSettingsSet(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Field string `json:"field"`
+		Value string `json:"value"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if strings.TrimSpace(body.Field) != "enabled" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "unknown field"})
+		return
+	}
+	val := strings.TrimSpace(body.Value)
+	if val == "" || strings.ContainsAny(val, " \t\n") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "value required"})
+		return
+	}
+	s.agentCmd(w, "settings set morning.enabled "+val)
+}
+
 // --- Phrases (agent client) — editable canned bridge messages ---
 
 func (s *Server) handlePhrasesList(w http.ResponseWriter, r *http.Request) {
