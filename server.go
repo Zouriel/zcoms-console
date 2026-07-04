@@ -136,6 +136,12 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/morning/settings", auth(s.handleMorningSettingsGet))
 	mux.HandleFunc("POST /api/morning/settings", auth(s.handleMorningSettingsSet))
 
+	// Errands (agent client) — read-only full-flow view + retry/cancel actions.
+	mux.HandleFunc("GET /api/errands", auth(s.handleErrandsList))
+	mux.HandleFunc("GET /api/errands/{id}", auth(s.handleErrandGet))
+	mux.HandleFunc("POST /api/errands/{id}/retry", auth(s.handleErrandRetry))
+	mux.HandleFunc("POST /api/errands/{id}/cancel", auth(s.handleErrandCancel))
+
 	// Triage groups (agent client) — per-app schedules CRUD.
 	mux.HandleFunc("GET /api/triage/groups", auth(s.handleTriageGroupsList))
 	mux.HandleFunc("POST /api/triage/groups", auth(s.handleTriageGroupSave))
