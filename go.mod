@@ -1,6 +1,6 @@
 module github.com/Zouriel/zcoms-console
 
-go 1.25.11
+go 1.25.12
 
 require (
 	github.com/Zouriel/zcoms v1.1.0
