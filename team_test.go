@@ -163,10 +163,18 @@ func TestTeamEventsPushesOnChange(t *testing.T) {
 
 	// Mutate through the module, the same path `zc team` uses. The stream must
 	// notice on its own, with no request from the client.
-	if _, err := s.team("task add hems low ZZ sse probe"); err != nil {
+	//
+	// This runs against the live team.db, so it works in a scratch project of its
+	// own rather than adding rows to a real one. Delegator delete is a soft
+	// delete, so the leftover row is inactive and invisible everywhere.
+	const scratch = "zz-sse-test"
+	if _, err := s.team("delegator create " + scratch); err != nil {
+		t.Fatalf("scratch project: %v", err)
+	}
+	t.Cleanup(func() { _, _ = s.team("delegator delete " + scratch) })
+	if _, err := s.team("task add " + scratch + " low probe"); err != nil {
 		t.Fatalf("mutate: %v", err)
 	}
-	t.Cleanup(func() { _, _ = s.team("task status hems done ZZ sse probe") })
 
 	second := waitFrame(t, versions, "after change")
 	if second == first {
