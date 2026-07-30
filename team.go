@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Zouriel/zcoms/client"
 )
@@ -99,6 +100,92 @@ func (s *Server) handleTeamStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleTeamOverview(w http.ResponseWriter, r *http.Request) {
 	s.teamRead(w, "overview")
+}
+
+// Live updates.
+//
+// The team module has no way to push, so the console polls its cheap `json
+// digest` verb and turns that into a Server-Sent Events stream. Polling here
+// rather than in the browser means one loop regardless of how many tabs are
+// open, and it picks up changes made from Telegram or the CLI too, not just
+// edits the console itself made.
+//
+// The stream carries only a version token; the client refetches whatever it is
+// displaying when the token moves. That keeps this endpoint O(1) no matter how
+// much team data exists.
+const (
+	teamPollInterval = 2 * time.Second
+	teamHeartbeat    = 20 * time.Second
+)
+
+func (s *Server) teamDigest() (string, bool) {
+	res, err := client.ModuleCommand("team.sock", "json digest", teamActor)
+	if !res.Running || err != nil {
+		return "", false
+	}
+	var body struct {
+		Version string `json:"version"`
+	}
+	if json.Unmarshal([]byte(res.Reply), &body) != nil {
+		return "", false
+	}
+	return body.Version, true
+}
+
+func (s *Server) handleTeamEvents(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeErr(w, http.StatusInternalServerError, fmt.Errorf("streaming unsupported"))
+		return
+	}
+	h := w.Header()
+	h.Set("Content-Type", "text/event-stream")
+	h.Set("Cache-Control", "no-cache")
+	h.Set("Connection", "keep-alive")
+	// Without this a buffering reverse proxy would hold the stream indefinitely.
+	h.Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+
+	send := func(event, data string) bool {
+		if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, data); err != nil {
+			return false
+		}
+		flusher.Flush()
+		return true
+	}
+
+	// Prime the client immediately so it renders without waiting a poll.
+	last, running := s.teamDigest()
+	if !send("change", fmt.Sprintf(`{"version":%q,"running":%t}`, last, running)) {
+		return
+	}
+
+	poll := time.NewTicker(teamPollInterval)
+	defer poll.Stop()
+	beat := time.NewTicker(teamHeartbeat)
+	defer beat.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return // client navigated away or the server is shutting down
+		case <-poll.C:
+			v, up := s.teamDigest()
+			if v == last && up == running {
+				continue
+			}
+			last, running = v, up
+			if !send("change", fmt.Sprintf(`{"version":%q,"running":%t}`, v, up)) {
+				return
+			}
+		case <-beat.C:
+			// A comment frame keeps idle intermediaries from closing the stream.
+			if _, err := fmt.Fprint(w, ": keepalive\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		}
+	}
 }
 
 func (s *Server) handleTeamAudit(w http.ResponseWriter, r *http.Request) {

@@ -153,6 +153,7 @@ func (s *Server) routes() http.Handler {
 	// writes use its human verbs and the reply is shown verbatim. Every handler
 	// degrades to "module not running" when team isn't up.
 	mux.HandleFunc("GET /api/team/status", auth(s.handleTeamStatus))
+	mux.HandleFunc("GET /api/team/events", auth(s.handleTeamEvents))
 	mux.HandleFunc("GET /api/team/overview", auth(s.handleTeamOverview))
 	mux.HandleFunc("GET /api/team/audit", auth(s.handleTeamAudit))
 	mux.HandleFunc("GET /api/team/delegators", auth(s.handleTeamDelegators))

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Zouriel/zcoms/client"
 )
@@ -114,5 +116,71 @@ func TestTeamTextFlattensWhitespace(t *testing.T) {
 	got := teamText("  ship\tthe\n\n thing  ")
 	if got != "ship the thing" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+// Live updates, end to end: the stream must push a new version token when team
+// data changes, without the client asking. This is what makes the console reflect
+// an edit made from Telegram or the CLI.
+func TestTeamEventsPushesOnChange(t *testing.T) {
+	teamUp(t)
+	s := &Server{}
+	srv := httptest.NewServer(http.HandlerFunc(s.handleTeamEvents))
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL)
+	if err != nil {
+		t.Fatalf("open stream: %v", err)
+	}
+	defer resp.Body.Close()
+	if ct := resp.Header.Get("Content-Type"); ct != "text/event-stream" {
+		t.Fatalf("content-type %q", ct)
+	}
+
+	// Read version tokens off the stream in the background.
+	versions := make(chan string, 8)
+	go func() {
+		sc := bufio.NewScanner(resp.Body)
+		for sc.Scan() {
+			line := sc.Text()
+			if !strings.HasPrefix(line, "data: ") {
+				continue // event: / heartbeat comment / blank separator
+			}
+			var d struct {
+				Version string `json:"version"`
+				Running bool   `json:"running"`
+			}
+			if json.Unmarshal([]byte(strings.TrimPrefix(line, "data: ")), &d) == nil {
+				versions <- d.Version
+			}
+		}
+	}()
+
+	first := waitFrame(t, versions, "initial")
+	if first == "" {
+		t.Fatal("initial frame carried no version")
+	}
+
+	// Mutate through the module, the same path `zc team` uses. The stream must
+	// notice on its own, with no request from the client.
+	if _, err := s.team("task add hems low ZZ sse probe"); err != nil {
+		t.Fatalf("mutate: %v", err)
+	}
+	t.Cleanup(func() { _, _ = s.team("task status hems done ZZ sse probe") })
+
+	second := waitFrame(t, versions, "after change")
+	if second == first {
+		t.Fatalf("version did not move after a change: %s", second)
+	}
+}
+
+func waitFrame(t *testing.T, ch <-chan string, what string) string {
+	t.Helper()
+	select {
+	case v := <-ch:
+		return v
+	case <-time.After(15 * time.Second):
+		t.Fatalf("timed out waiting for the %s frame", what)
+		return ""
 	}
 }

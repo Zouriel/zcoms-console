@@ -13,7 +13,16 @@ export const routes: Routes = [
   { path: 'errands', loadComponent: () => import('./pages/errands').then((m) => m.ErrandsPage) },
   { path: 'morning', loadComponent: () => import('./pages/morning').then((m) => m.MorningPage) },
   { path: 'messages', loadComponent: () => import('./pages/messages').then((m) => m.MessagesPage) },
-  { path: 'team', loadComponent: () => import('./pages/team').then((m) => m.TeamPage) },
+  {
+    // The Team shell owns the project tab strip and the live subscription; each
+    // project is its own routed page underneath it.
+    path: 'team',
+    loadComponent: () => import('./pages/team').then((m) => m.TeamPage),
+    children: [
+      { path: '', loadComponent: () => import('./pages/team-projects').then((m) => m.TeamProjectsPage) },
+      { path: ':project', loadComponent: () => import('./pages/team-project').then((m) => m.TeamProjectPage) },
+    ],
+  },
   { path: 'commerce', loadComponent: () => import('./pages/commerce').then((m) => m.CommercePage) },
   { path: 'settings', loadComponent: () => import('./pages/settings').then((m) => m.SettingsPage) },
   { path: '**', redirectTo: 'contacts' },
