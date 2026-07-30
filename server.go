@@ -148,6 +148,30 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("DELETE /api/triage/groups/{id}", auth(s.handleTriageGroupDelete))
 	mux.HandleFunc("POST /api/triage/groups/{id}/{action}", auth(s.handleTriageGroupToggle))
 
+	// Team (agent-tier module, proxied over team.sock) — delegators, standups,
+	// staff, tasks and the audit trail. Reads use the module's `json …` verbs;
+	// writes use its human verbs and the reply is shown verbatim. Every handler
+	// degrades to "module not running" when team isn't up.
+	mux.HandleFunc("GET /api/team/status", auth(s.handleTeamStatus))
+	mux.HandleFunc("GET /api/team/overview", auth(s.handleTeamOverview))
+	mux.HandleFunc("GET /api/team/audit", auth(s.handleTeamAudit))
+	mux.HandleFunc("GET /api/team/delegators", auth(s.handleTeamDelegators))
+	mux.HandleFunc("POST /api/team/delegators", auth(s.handleTeamDelegatorCreate))
+	mux.HandleFunc("PUT /api/team/delegators/{name}", auth(s.handleTeamDelegatorUpdate))
+	mux.HandleFunc("DELETE /api/team/delegators/{name}", auth(s.handleTeamDelegatorDelete))
+	mux.HandleFunc("GET /api/team/standups", auth(s.handleTeamStandups))
+	mux.HandleFunc("POST /api/team/standups", auth(s.handleTeamStandupCreate))
+	mux.HandleFunc("PUT /api/team/standups/{name}", auth(s.handleTeamStandupUpdate))
+	mux.HandleFunc("POST /api/team/standups/{name}/{action}", auth(s.handleTeamStandupToggle))
+	mux.HandleFunc("GET /api/team/standups/{name}/runs", auth(s.handleTeamStandupRuns))
+	mux.HandleFunc("GET /api/team/staff", auth(s.handleTeamStaff))
+	mux.HandleFunc("POST /api/team/staff", auth(s.handleTeamStaffAdd))
+	mux.HandleFunc("PUT /api/team/staff/{telegram}", auth(s.handleTeamStaffUpdate))
+	mux.HandleFunc("DELETE /api/team/staff/{telegram}", auth(s.handleTeamStaffRemove))
+	mux.HandleFunc("GET /api/team/tasks", auth(s.handleTeamTasks))
+	mux.HandleFunc("POST /api/team/tasks", auth(s.handleTeamTaskCreate))
+	mux.HandleFunc("POST /api/team/tasks/{id}/{action}", auth(s.handleTeamTaskAction))
+
 	// Commerce (core-only module, proxied over commerce.sock) — stores,
 	// products, orders, refunds, billing, reports + their admin actions. Every
 	// handler degrades to "module not running" when commerce isn't installed.

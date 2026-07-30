@@ -68,6 +68,7 @@ export class App {
         { label: 'Errands', value: 'errands' },
         { label: 'Morning', value: 'morning' },
         { label: 'Messages', value: 'messages' },
+        { label: 'Team', value: 'team' },
         { label: 'Commerce', value: 'commerce' },
         { label: 'Settings', value: 'settings' },
       ],

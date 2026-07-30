@@ -13,6 +13,7 @@ export const routes: Routes = [
   { path: 'errands', loadComponent: () => import('./pages/errands').then((m) => m.ErrandsPage) },
   { path: 'morning', loadComponent: () => import('./pages/morning').then((m) => m.MorningPage) },
   { path: 'messages', loadComponent: () => import('./pages/messages').then((m) => m.MessagesPage) },
+  { path: 'team', loadComponent: () => import('./pages/team').then((m) => m.TeamPage) },
   { path: 'commerce', loadComponent: () => import('./pages/commerce').then((m) => m.CommercePage) },
   { path: 'settings', loadComponent: () => import('./pages/settings').then((m) => m.SettingsPage) },
   { path: '**', redirectTo: 'contacts' },
