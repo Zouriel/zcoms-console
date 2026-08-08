@@ -102,6 +102,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("POST /api/sessions/label", auth(s.handleSessionLabel))
 
 	// Personas (agent client) — edit only.
+	mux.HandleFunc("GET /api/brains", auth(s.handleBrainsList))
 	mux.HandleFunc("GET /api/personas", auth(s.handlePersonasList))
 	mux.HandleFunc("POST /api/personas/{key}", auth(s.handlePersonaSet))
 

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -166,8 +167,10 @@ func TestTeamEventsPushesOnChange(t *testing.T) {
 	//
 	// This runs against the live team.db, so it works in a scratch project of its
 	// own rather than adding rows to a real one. Delegator delete is a soft
-	// delete, so the leftover row is inactive and invisible everywhere.
-	const scratch = "zz-sse-test"
+	// delete: the leftover row is inactive and invisible in listings, but it still
+	// holds its name, so the scratch name has to be unique per run or the second
+	// run on a machine can never create it.
+	scratch := fmt.Sprintf("zz-sse-test-%d", time.Now().UnixNano())
 	if _, err := s.team("delegator create " + scratch); err != nil {
 		t.Fatalf("scratch project: %v", err)
 	}

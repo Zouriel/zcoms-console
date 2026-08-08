@@ -188,6 +188,18 @@ func (s *Server) handleSessionLabel(w http.ResponseWriter, r *http.Request) {
 
 // --- Personas (agent client) — edit only ---
 
+// handleBrainsList reports the agent CLIs installed on the agent's machine and
+// the models each accepts, discovered from the CLIs themselves so the persona
+// editor offers real choices instead of a hardcoded list.
+func (s *Server) handleBrainsList(w http.ResponseWriter, r *http.Request) {
+	bs, err := s.agent.QueryBrains()
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, bs)
+}
+
 func (s *Server) handlePersonasList(w http.ResponseWriter, r *http.Request) {
 	ps, err := s.agent.QueryPersonas()
 	if err != nil {
@@ -212,7 +224,16 @@ func (s *Server) handlePersonaSet(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "backend must be claude|codex"})
 			return
 		}
-	case "model", "seed", "name":
+	case "model":
+		// Any model string is allowed: the discovered list is advisory (a pinned
+		// id or a brand-new model the CLI knows about won't be in it), and the CLI
+		// is what validates it. Reject only shell-hostile input, since the command
+		// crosses agent.sock as a text line.
+		if strings.ContainsAny(body.Value, " \t\n\r") {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "model must be a single token"})
+			return
+		}
+	case "seed", "name":
 	default:
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "field must be backend|model|seed|name"})
 		return
