@@ -64,7 +64,6 @@ export class App {
         { label: 'Allowlist', value: 'allowlist' },
         { label: 'Connectors', value: 'connectors' },
         { label: 'Groups', value: 'groups' },
-        { label: 'Projects', value: 'projects' },
         { label: 'Triage', value: 'triage' },
         { label: 'Reminders', value: 'reminders' },
         { label: 'Errands', value: 'errands' },
@@ -84,7 +83,7 @@ export class App {
       .pipe(filter((e) => e instanceof NavigationEnd))
       .subscribe((e) => {
         const url = (e as NavigationEnd).urlAfterRedirects || '/';
-        this.active.set(url.split('/')[1] || 'contacts');
+        this.active.set(url.split(/[?#]/)[0].split('/')[1] || 'contacts');
       });
     // Drop back to the login gate only when a *new* 401 occurs — keyed on the
     // unauthorized counter incrementing, NOT on `ready`, so confirming auth on

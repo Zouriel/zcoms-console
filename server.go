@@ -148,10 +148,23 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("DELETE /api/triage/groups/{id}", auth(s.handleTriageGroupDelete))
 	mux.HandleFunc("POST /api/triage/groups/{id}/{action}", auth(s.handleTriageGroupToggle))
 
-	// Chat groups and bound projects (agent client), read-only.
-	mux.HandleFunc("GET /api/groups", auth(s.handleGroupPoliciesList))
+	// Groups tab: chat groups on both transports (comms client) merged with
+	// the agent's policies, plus bound projects. Writes go out as owner
+	// commands; project paths come from the agent's list, never the browser.
+	mux.HandleFunc("GET /api/groups", auth(s.handleGroupsList))
+	mux.HandleFunc("POST /api/groups/policy", auth(s.handleGroupPolicy))
+	mux.HandleFunc("POST /api/groups/create", auth(s.handleGroupCreate))
+	mux.HandleFunc("POST /api/groups/members", auth(s.handleGroupAddMembers))
+	mux.HandleFunc("GET /api/groups/members", auth(s.handleGroupMembers))
+	mux.HandleFunc("GET /api/groups/messages", auth(s.handleGroupMessages))
 	mux.HandleFunc("GET /api/projects", auth(s.handleProjectsList))
 	mux.HandleFunc("GET /api/projects/{id}", auth(s.handleProjectDetail))
+	mux.HandleFunc("GET /api/projects/{id}/status", auth(s.handleProjectStatus))
+	mux.HandleFunc("POST /api/projects/{id}/alias", auth(s.handleProjectAlias))
+	mux.HandleFunc("POST /api/projects/{id}/tasks/{task}/{action}", auth(s.handleProjectTask))
+	mux.HandleFunc("POST /api/projects/{id}/follow", auth(s.handleProjectFollow))
+	mux.HandleFunc("POST /api/projects/{id}/standup", auth(s.handleProjectStandup))
+	mux.HandleFunc("POST /api/projects/{id}/remove", auth(s.handleProjectRemove))
 
 	// Commerce (core-only module, proxied over commerce.sock) — stores,
 	// products, orders, refunds, billing, reports + their admin actions. Every

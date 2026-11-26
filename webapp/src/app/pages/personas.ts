@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { UiToastService } from 'ui/dialog';
 import { Api } from '../core/api';
@@ -22,9 +23,15 @@ const CUSTOM = '__custom__';
       <ui-text variant="caption" class="muted">each agent identity's backend, model and seed prompt (edits take effect live)</ui-text>
     </div>
 
+    @if (only().length) {
+      <div class="toolbar">
+        <ui-text variant="caption" class="muted">Showing {{ only().join(', ') }}</ui-text>
+        <ui-button variant="ghost" size="sm" (click)="showAll()">Show all</ui-button>
+      </div>
+    }
     @if (loading()) { <ui-spinner></ui-spinner> } @else {
       <div class="grid">
-        @for (p of items(); track p.key) {
+        @for (p of shown(); track p.key) {
           <ui-card padding="md">
             <div class="row" style="justify-content:space-between">
               <div>
@@ -71,7 +78,15 @@ const CUSTOM = '__custom__';
 export class PersonasPage {
   private api = inject(Api);
   private toast = inject(UiToastService);
+  private router = inject(Router);
   items = signal<Persona[]>([]);
+  // ?keys=a,b narrows the page to those personas (the Groups tab links here).
+  only = signal<string[]>(
+    (inject(ActivatedRoute).snapshot.queryParamMap.get('keys') || '').split(',').map(k => k.trim()).filter(Boolean));
+  shown = computed(() => {
+    const keys = this.only();
+    return keys.length ? this.items().filter(p => keys.includes(p.key)) : this.items();
+  });
   brains = signal<Brain[]>([]);
   loading = signal(true);
   // Persona keys whose model is being typed by hand rather than picked.
@@ -93,6 +108,8 @@ export class PersonasPage {
     } catch (e: any) { this.toast.danger(e.message, 'Load failed'); }
     finally { this.loading.set(false); }
   }
+
+  showAll() { this.only.set([]); this.router.navigate(['personas']); }
 
   private brain(name?: string): Brain | undefined {
     return this.brains().find(b => b.name === (name || 'claude'));
