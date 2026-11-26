@@ -240,6 +240,13 @@ func TestMutationsRequireJSON(t *testing.T) {
 	if rec.Code != http.StatusUnsupportedMediaType || ag.count() != 0 {
 		t.Fatalf("status %d, agent calls %d", rec.Code, ag.count())
 	}
+	r = httptest.NewRequest(http.MethodPost, "/api/groups/dir", strings.NewReader(`{"transport":"telegram","native_id":"-100","path":"/a"}`))
+	r.Header.Set("Content-Type", "text/plain")
+	rec = httptest.NewRecorder()
+	s.handleGroupDir(rec, r)
+	if rec.Code != http.StatusUnsupportedMediaType || ag.count() != 0 {
+		t.Fatalf("dir: status %d, agent calls %d", rec.Code, ag.count())
+	}
 }
 
 func TestGroupCreateAndAdd(t *testing.T) {
@@ -578,5 +585,48 @@ func TestGroupRole(t *testing.T) {
 				t.Fatal("rejected request still reached the agent")
 			}
 		})
+	}
+}
+
+func TestGroupDir(t *testing.T) {
+	s, ag := fakeAgentRec(t, map[string]string{
+		`group dir telegram "-100" "/home/me/acme"`:                  "Moved",
+		`group dir whatsapp "1-2@g.us" "~/work/my \"app\"" --create`: "Bound",
+	})
+	tests := []struct {
+		name, body, wantLine string
+		code                 int
+	}{
+		{"move", `{"transport":"telegram","native_id":"-100","path":" /home/me/acme "}`, `group dir telegram "-100" "/home/me/acme"`, 200},
+		{"create with tilde and quotes", `{"transport":"whatsapp","native_id":"1-2@g.us","path":"~/work/my \"app\"","create":true}`, `group dir whatsapp "1-2@g.us" "~/work/my \"app\"" --create`, 200},
+		{"relative", `{"transport":"telegram","native_id":"-100","path":"acme"}`, "", 400},
+		{"flag as path", `{"transport":"telegram","native_id":"-100","path":"--create"}`, "", 400},
+		{"empty", `{"transport":"telegram","native_id":"-100","path":"  "}`, "", 400},
+		{"newline", `{"transport":"telegram","native_id":"-100","path":"/a\ngroup off telegram x"}`, "", 400},
+		{"bad group", `{"transport":"telegram","native_id":"-100 x","path":"/a"}`, "", 400},
+		{"bad transport", `{"transport":"sms","native_id":"-100","path":"/a"}`, "", 400},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			before := ag.count()
+			rec := httptest.NewRecorder()
+			s.handleGroupDir(rec, jsonReq(http.MethodPost, "/api/groups/dir", tc.body))
+			if rec.Code != tc.code {
+				t.Fatalf("status %d, want %d: %s", rec.Code, tc.code, rec.Body)
+			}
+			if tc.wantLine != "" && ag.lastLine() != tc.wantLine {
+				t.Fatalf("sent %q, want %q", ag.lastLine(), tc.wantLine)
+			}
+			if tc.wantLine == "" && ag.count() != before {
+				t.Fatal("rejected request still reached the agent")
+			}
+		})
+	}
+
+	// The agent's refusal reaches the browser as an error.
+	rec := httptest.NewRecorder()
+	s.handleGroupDir(rec, jsonReq(http.MethodPost, "/api/groups/dir", `{"transport":"telegram","native_id":"-100","path":"/elsewhere"}`))
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("agent refusal: status %d", rec.Code)
 	}
 }

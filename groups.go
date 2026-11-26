@@ -234,6 +234,43 @@ func (s *Server) handleGroupTrack(w http.ResponseWriter, r *http.Request) {
 	s.agentCmd(w, line)
 }
 
+// handleGroupDir gives a group a folder or moves its folder (`group dir`).
+// The path is the owner's own input; the agent re-checks everything (exists,
+// not another group's, no overlap, not under the config folder) in code.
+// Here it only has to be one clean line that reads as an absolute or ~ path.
+func (s *Server) handleGroupDir(w http.ResponseWriter, r *http.Request) {
+	if !requireJSON(w, r) {
+		return
+	}
+	var body struct {
+		Transport string `json:"transport"`
+		NativeID  string `json:"native_id"`
+		Path      string `json:"path"`
+		Create    bool   `json:"create"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if err := validGroup(body.Transport, body.NativeID); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	path, err := cleanText("path", body.Path, 4096)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	if !strings.HasPrefix(path, "/") && path != "~" && !strings.HasPrefix(path, "~/") {
+		writeErr(w, http.StatusBadRequest, errors.New("path must be absolute (start with / or ~/)"))
+		return
+	}
+	line := "group dir " + body.Transport + " " + quoteArg(body.NativeID) + " " + quoteArg(path)
+	if body.Create {
+		line += " --create"
+	}
+	s.agentCmd(w, line)
+}
+
 // contactAddresses maps contact ids to each contact's address on transport.
 func (s *Server) contactAddresses(transport string, ids []int64) ([]string, error) {
 	if len(ids) == 0 {
