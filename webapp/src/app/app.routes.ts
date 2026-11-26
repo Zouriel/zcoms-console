@@ -8,6 +8,8 @@ export const routes: Routes = [
   { path: 'personas', loadComponent: () => import('./pages/personas').then((m) => m.PersonasPage) },
   { path: 'allowlist', loadComponent: () => import('./pages/allowlist').then((m) => m.AllowlistPage) },
   { path: 'connectors', loadComponent: () => import('./pages/connectors').then((m) => m.ConnectorsPage) },
+  { path: 'groups', loadComponent: () => import('./pages/groups').then((m) => m.GroupsPage) },
+  { path: 'projects', loadComponent: () => import('./pages/projects').then((m) => m.ProjectsPage) },
   { path: 'triage', loadComponent: () => import('./pages/triage').then((m) => m.TriagePage) },
   { path: 'reminders', loadComponent: () => import('./pages/reminders').then((m) => m.RemindersPage) },
   { path: 'errands', loadComponent: () => import('./pages/errands').then((m) => m.ErrandsPage) },

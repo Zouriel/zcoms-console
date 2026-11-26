@@ -274,7 +274,7 @@ func (s *Server) handleAllowlistAdd(w http.ResponseWriter, r *http.Request) {
 
 // allowMsgPlatforms is the set of messaging channels an allow-list entry can
 // target, mirrored from runner.AllowPlatforms (the console can't import the
-// agent's runner). Email/GitHub/Note are contact info, not channels.
+// agent's runner). Email and Note are contact info, not channels.
 var allowMsgPlatforms = []string{"telegram", "whatsapp"}
 
 // allowPlatform validates a platform name, defaulting unknown values to telegram.

@@ -12,10 +12,9 @@ interface Contact {
   email?: string;
   telegram?: string;
   whatsapp?: string;
-  github?: string;
   note?: string;
 }
-const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: '', telegram: '', whatsapp: '', github: '', note: '' });
+const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: '', telegram: '', whatsapp: '', note: '' });
 
 @Component({
   selector: 'app-contacts',
@@ -67,9 +66,6 @@ const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: 
         </ui-form-field>
         <ui-form-field label="WhatsApp" hint="id/number — else the phone is used">
           <ui-input class="f" [(ngModel)]="form.whatsapp" placeholder="defaults to phone"></ui-input>
-        </ui-form-field>
-        <ui-form-field label="GitHub" hint="handle (contact info)">
-          <ui-input class="f" [(ngModel)]="form.github" placeholder="octocat"></ui-input>
         </ui-form-field>
         <ui-form-field label="Note" class="span2"><ui-input class="f" [(ngModel)]="form.note" placeholder="optional"></ui-input></ui-form-field>
       </div>

@@ -63,6 +63,8 @@ export class App {
         { label: 'Personas', value: 'personas' },
         { label: 'Allowlist', value: 'allowlist' },
         { label: 'Connectors', value: 'connectors' },
+        { label: 'Groups', value: 'groups' },
+        { label: 'Projects', value: 'projects' },
         { label: 'Triage', value: 'triage' },
         { label: 'Reminders', value: 'reminders' },
         { label: 'Errands', value: 'errands' },

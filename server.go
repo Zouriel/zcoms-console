@@ -148,6 +148,11 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("DELETE /api/triage/groups/{id}", auth(s.handleTriageGroupDelete))
 	mux.HandleFunc("POST /api/triage/groups/{id}/{action}", auth(s.handleTriageGroupToggle))
 
+	// Chat groups and bound projects (agent client), read-only.
+	mux.HandleFunc("GET /api/groups", auth(s.handleGroupPoliciesList))
+	mux.HandleFunc("GET /api/projects", auth(s.handleProjectsList))
+	mux.HandleFunc("GET /api/projects/{id}", auth(s.handleProjectDetail))
+
 	// Commerce (core-only module, proxied over commerce.sock) — stores,
 	// products, orders, refunds, billing, reports + their admin actions. Every
 	// handler degrades to "module not running" when commerce isn't installed.
