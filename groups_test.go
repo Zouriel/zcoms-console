@@ -462,3 +462,64 @@ func TestQuoteArg(t *testing.T) {
 		t.Fatalf("quoteArg = %s", got)
 	}
 }
+
+func TestGroupTrack(t *testing.T) {
+	s, ag := fakeAgentRec(t, map[string]string{
+		`group track on telegram "-100"`:          "Tracking",
+		`group track off whatsapp "1-2@g.us"`:     "Stopped",
+		`group track off telegram "-100" --purge`: "Stopped and purged",
+	})
+	tests := []struct {
+		name, body, wantLine string
+		code                 int
+	}{
+		{"on", `{"transport":"telegram","native_id":"-100","on":true}`, `group track on telegram "-100"`, 200},
+		{"off keeps data", `{"transport":"whatsapp","native_id":"1-2@g.us","on":false}`, `group track off whatsapp "1-2@g.us"`, 200},
+		{"off purge", `{"transport":"telegram","native_id":"-100","on":false,"purge":true}`, `group track off telegram "-100" --purge`, 200},
+		{"on purge refused", `{"transport":"telegram","native_id":"-100","on":true,"purge":true}`, "", 400},
+		{"injected id", `{"transport":"telegram","native_id":"-100 --purge","on":false}`, "", 400},
+		{"bad transport", `{"transport":"sms","native_id":"-100","on":true}`, "", 400},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			before := ag.count()
+			rec := httptest.NewRecorder()
+			s.handleGroupTrack(rec, jsonReq(http.MethodPost, "/api/groups/track", tc.body))
+			if rec.Code != tc.code {
+				t.Fatalf("status %d, want %d: %s", rec.Code, tc.code, rec.Body)
+			}
+			if tc.wantLine != "" && ag.lastLine() != tc.wantLine {
+				t.Fatalf("sent %q, want %q", ag.lastLine(), tc.wantLine)
+			}
+			if tc.wantLine == "" && ag.count() != before {
+				t.Fatal("rejected request still reached the agent")
+			}
+		})
+	}
+}
+
+func TestGroupsListShowsTasksKindAndFolder(t *testing.T) {
+	s := fakeAgent(t, map[string]string{
+		"json group-policies": `[{"transport":"telegram","native_id":"-300","name":"Trip","kind":"tasks","project_id":4,"folder":"/home/u/zcoms-groups/trip","tracked":true}]`,
+		"json projects":       `[{"id":4,"path":"/home/u/zcoms-groups/trip","transport":"telegram","native_id":"-300","group_name":"Trip","follow_tasks":true,"tracked":true}]`,
+	})
+	fakeDaemon(t, s, func(q client.Request) client.Response {
+		if q.Transport == "whatsapp" {
+			return client.Response{OK: true}
+		}
+		return client.Response{OK: true, Groups: []client.Group{{NativeID: "-300", Name: "Trip", Transport: "telegram", Listen: true, Follow: true}}}
+	})
+	rec := httptest.NewRecorder()
+	s.handleGroupsList(rec, httptest.NewRequest(http.MethodGet, "/api/groups", nil))
+	var got groupsView
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Groups) != 1 {
+		t.Fatalf("view %+v", got)
+	}
+	g := got.Groups[0]
+	if g.Kind != "tasks" || g.Folder != "/home/u/zcoms-groups/trip" || !g.Tracked || g.ProjectID != 4 || g.ProjectPath != g.Folder {
+		t.Fatalf("row %+v", g)
+	}
+}

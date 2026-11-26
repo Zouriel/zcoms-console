@@ -153,6 +153,7 @@ func (s *Server) routes() http.Handler {
 	// commands; project paths come from the agent's list, never the browser.
 	mux.HandleFunc("GET /api/groups", auth(s.handleGroupsList))
 	mux.HandleFunc("POST /api/groups/policy", auth(s.handleGroupPolicy))
+	mux.HandleFunc("POST /api/groups/track", auth(s.handleGroupTrack))
 	mux.HandleFunc("POST /api/groups/create", auth(s.handleGroupCreate))
 	mux.HandleFunc("POST /api/groups/members", auth(s.handleGroupAddMembers))
 	mux.HandleFunc("GET /api/groups/members", auth(s.handleGroupMembers))

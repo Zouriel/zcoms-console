@@ -32,7 +32,9 @@ var (
 )
 
 // groupRow is one group in the merged view. Kind is "off" when the agent has
-// no policy for it. InRegistry is false for a policy whose group the daemon did
+// no policy for it, else general, tasks (task tracking on, no repo in its
+// folder yet) or project. Folder is the bound folder of a tasks or project
+// group; Tracked says it came from the Track tasks toggle. InRegistry is false for a policy whose group the daemon did
 // not list (its transport is down, or the account left the group).
 type groupRow struct {
 	Transport   string `json:"transport"`
@@ -41,6 +43,8 @@ type groupRow struct {
 	Kind        string `json:"kind"`
 	ProjectID   int64  `json:"project_id,omitempty"`
 	ProjectPath string `json:"project_path,omitempty"`
+	Folder      string `json:"folder,omitempty"`
+	Tracked     bool   `json:"tracked,omitempty"`
 	Listen      bool   `json:"listen"`
 	Follow      bool   `json:"follow"`
 	LastCall    int64  `json:"last_call,omitempty"`
@@ -151,6 +155,10 @@ func (s *Server) handleGroupsList(w http.ResponseWriter, r *http.Request) {
 		}
 		row := &view.Groups[i]
 		row.Kind, row.ProjectID, row.ProjectPath, row.LastCall = p.Kind, p.ProjectID, p.ProjectPath, p.LastCall
+		row.Folder, row.Tracked = p.Folder, p.Tracked
+		if row.Folder == "" {
+			row.Folder = p.ProjectPath
+		}
 		if row.Name == "" {
 			row.Name = p.Name
 		}
@@ -187,6 +195,40 @@ func (s *Server) handleGroupPolicy(w http.ResponseWriter, r *http.Request) {
 		verb = "on"
 	}
 	s.agentCmd(w, "group "+verb+" "+body.Transport+" "+quoteArg(body.NativeID))
+}
+
+// handleGroupTrack turns task tracking on or off for a group. Off keeps the
+// folder and history unless purge is set; purge with on is refused.
+func (s *Server) handleGroupTrack(w http.ResponseWriter, r *http.Request) {
+	if !requireJSON(w, r) {
+		return
+	}
+	var body struct {
+		Transport string `json:"transport"`
+		NativeID  string `json:"native_id"`
+		On        bool   `json:"on"`
+		Purge     bool   `json:"purge"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if err := validGroup(body.Transport, body.NativeID); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	if body.On && body.Purge {
+		writeErr(w, http.StatusBadRequest, errors.New("purge only goes with turning tracking off"))
+		return
+	}
+	verb := "off"
+	if body.On {
+		verb = "on"
+	}
+	line := "group track " + verb + " " + body.Transport + " " + quoteArg(body.NativeID)
+	if body.Purge {
+		line += " --purge"
+	}
+	s.agentCmd(w, line)
 }
 
 // contactAddresses maps contact ids to each contact's address on transport.

@@ -9,9 +9,11 @@ interface GroupRow {
   transport: string;
   native_id: string;
   name: string;
-  kind: string; // 'off' | 'general' | 'project'
+  kind: string; // 'off' | 'general' | 'tasks' | 'project'
   project_id?: number;
   project_path?: string;
+  folder?: string; // bound folder of a tasks or project group
+  tracked?: boolean; // the folder came from Track tasks, not zc project init
   listen: boolean;
   follow: boolean;
   last_call?: number; // unix seconds
@@ -22,7 +24,7 @@ interface Contact { id: number; name: string; aliases?: string[]; phone?: string
 interface GroupMember { id: string; name: string; username?: string; is_self?: boolean; }
 interface GroupMessage { id: string; sender_name: string; text: string; kind: string; date: number; outgoing?: boolean; }
 
-interface Project { id: number; path: string; transport: string; native_id: string; group_name?: string; follow_tasks: boolean; }
+interface Project { id: number; path: string; transport: string; native_id: string; group_name?: string; follow_tasks: boolean; tracked?: boolean; }
 interface Member { id: number; name: string; transport: string; platform_id: string; active: boolean; aliases?: string[]; }
 interface Task { id: number; title: string; assignee?: string; status: string; created_at: string; }
 interface Summary { date: string; text: string; }
@@ -39,7 +41,7 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
   imports: [FormsModule, ...UI],
   template: `
     <div class="page-head">
-      <ui-text variant="caption" class="muted">every Telegram and WhatsApp group you are in, what the agent does in each, and the repos bound to project groups</ui-text>
+      <ui-text variant="caption" class="muted">every Telegram and WhatsApp group you are in, what the agent does in each, and the folders of task and project groups</ui-text>
     </div>
 
     <div class="subnav">
@@ -63,7 +65,7 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
         </div>
         @if (loading()) { <ui-spinner></ui-spinner> } @else {
           <div class="tbl-scroll"><table class="tbl">
-            <thead><tr><th>Group</th><th>Platform</th><th>Agent</th><th>Bound repo</th><th>Listen / follow</th><th>Last call</th><th style="width:1%"></th></tr></thead>
+            <thead><tr><th>Group</th><th>Platform</th><th>Agent</th><th>Track tasks</th><th>Folder</th><th>Listen / follow</th><th>Last call</th><th style="width:1%"></th></tr></thead>
             <tbody>
               @for (g of filtered(); track g.transport + ':' + g.native_id) {
                 <tr>
@@ -74,8 +76,8 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
                   </td>
                   <td><ui-chip>{{ g.transport }}</ui-chip></td>
                   <td>
-                    @if (g.kind === 'project') {
-                      <ui-badge tone="primary">project</ui-badge>
+                    @if (g.kind === 'project' || g.kind === 'tasks') {
+                      <ui-badge [tone]="g.kind === 'project' ? 'primary' : 'warning'">{{ g.kind }}</ui-badge>
                     } @else {
                       <div class="row nowrap">
                         <ui-switch [ngModel]="g.kind === 'general'" (ngModelChange)="setPolicy(g, $event)" [disabled]="busy().has(key(g))"></ui-switch>
@@ -83,25 +85,32 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
                       </div>
                     }
                   </td>
-                  <td class="mono">{{ g.project_path || '' }}</td>
+                  <td>
+                    @if (g.kind === 'project' && !g.tracked) {
+                      <span class="muted small">bound repo</span>
+                    } @else {
+                      <ui-switch [ngModel]="!!g.tracked" (ngModelChange)="setTrack(g, $event)" [disabled]="busy().has(key(g))"></ui-switch>
+                    }
+                  </td>
+                  <td class="mono">{{ g.folder || g.project_path || '' }}</td>
                   <td>
                     <ui-badge [tone]="g.listen ? 'success' : 'neutral'">{{ g.listen ? 'listen' : 'no listen' }}</ui-badge>
                     <ui-badge [tone]="g.follow ? 'success' : 'neutral'">{{ g.follow ? 'follow' : 'no follow' }}</ui-badge>
                   </td>
                   <td class="muted small">{{ when(g.last_call) }}</td>
                   <td><div class="row-actions nowrap">
-                    @if (g.kind === 'project' && g.project_id) {
-                      <ui-button variant="secondary" size="sm" (click)="openProjectById(g.project_id)">Project</ui-button>
+                    @if ((g.kind === 'project' || g.kind === 'tasks') && g.project_id) {
+                      <ui-button variant="secondary" size="sm" (click)="openProjectById(g.project_id)">{{ g.kind === 'tasks' ? 'Tasks' : 'Project' }}</ui-button>
                     }
                     <ui-button variant="ghost" size="sm" (click)="openMembers(g)">Members</ui-button>
                     <ui-button variant="ghost" size="sm" (click)="openMessages(g)">Messages</ui-button>
                     <ui-button variant="ghost" size="sm" (click)="openAdd(g)">Add people</ui-button>
                   </div></td>
                 </tr>
-              } @empty { <tr><td colspan="7" class="empty">No groups found.</td></tr> }
+              } @empty { <tr><td colspan="8" class="empty">No groups found.</td></tr> }
             </tbody>
           </table></div>
-          <ui-text variant="caption" class="muted">Turning a group on makes it general: the agent answers when someone there mentions it or replies to it. Project groups are bound to a repo from the CLI.</ui-text>
+          <ui-text variant="caption" class="muted">Turning a group on makes it general: the agent answers when someone there mentions it or replies to it, with web search only. Track tasks gives the group a folder, follows its tasks and posts a standup at 09:00; once you put a git repo in that folder it becomes a project group. Groups bound with zc project init are managed from the CLI.</ui-text>
         }
       </ui-card>
     }
@@ -114,11 +123,11 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
         </div>
         @if (projectsLoading()) { <ui-spinner></ui-spinner> } @else {
           <div class="tbl-scroll"><table class="tbl">
-            <thead><tr><th>Repo</th><th>Group</th><th>Platform</th><th>Follow tasks</th><th style="width:1%"></th></tr></thead>
+            <thead><tr><th>Folder</th><th>Group</th><th>Platform</th><th>Follow tasks</th><th style="width:1%"></th></tr></thead>
             <tbody>
               @for (p of projects(); track p.id) {
                 <tr [class.sel]="detail()?.project?.id === p.id">
-                  <td class="mono">{{ p.path }}</td>
+                  <td class="mono">{{ p.path }} @if (p.tracked) { <ui-badge tone="warning">tracked</ui-badge> }</td>
                   <td>{{ p.group_name || p.native_id }}</td>
                   <td><ui-chip>{{ p.transport }}</ui-chip></td>
                   <td><ui-badge [tone]="p.follow_tasks ? 'success' : 'neutral'">{{ p.follow_tasks ? 'on' : 'off' }}</ui-badge></td>
@@ -149,7 +158,7 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
             <ui-button variant="secondary" size="sm" [disabled]="standupBusy()" (click)="standup(d)">{{ standupBusy() ? 'Running standup...' : 'Run standup now' }}</ui-button>
             <ui-button variant="ghost" size="sm" (click)="status(d)">Status</ui-button>
             <span class="spacer"></span>
-            <ui-button variant="destructive" size="sm" (click)="askUnbind()">Unbind</ui-button>
+            <ui-button variant="destructive" size="sm" (click)="askUnbind()">{{ d.project.tracked ? 'Stop tracking' : 'Unbind' }}</ui-button>
           </div>
 
           <ui-text variant="caption" class="muted section">Members</ui-text>
@@ -297,7 +306,11 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
     <!-- Unbind -->
     <ui-modal [(open)]="unbindOpen" title="Unbind project" size="sm">
       <div class="stack">
-        <ui-text variant="body">Unbind {{ detail()?.project?.path }} from {{ detail()?.project?.group_name }}? The agent stops answering there and turns listening off.</ui-text>
+        @if (detail()?.project?.tracked) {
+          <ui-text variant="body">Stop tracking tasks in {{ detail()?.project?.group_name }}? It goes back to general if it was general before, otherwise off. The folder {{ detail()?.project?.path }} is kept.</ui-text>
+        } @else {
+          <ui-text variant="body">Unbind {{ detail()?.project?.path }} from {{ detail()?.project?.group_name }}? The agent stops answering there and turns listening off.</ui-text>
+        }
         <div class="row nowrap">
           <ui-switch [(ngModel)]="purge"></ui-switch>
           <span>Also delete the chat history and .zcoms file</span>
@@ -306,6 +319,22 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
       <div modal-footer class="row-actions">
         <ui-button variant="ghost" (click)="unbindOpen.set(false)">Cancel</ui-button>
         <ui-button variant="destructive" [disabled]="saving()" (click)="unbind()">Unbind</ui-button>
+      </div>
+    </ui-modal>
+
+    <!-- Stop tracking tasks (from the groups list) -->
+    <ui-modal [(open)]="untrackOpen" title="Stop tracking tasks" size="sm" (openChange)="$event || load()">
+      <div class="stack">
+        <ui-text variant="body">Stop tracking tasks in {{ untrackTarget()?.name }}? The standup stops and the agent stops storing its messages. If it was a general group before, it goes back to general; otherwise it is turned off.</ui-text>
+        <ui-text variant="caption" class="muted mono">{{ untrackTarget()?.folder }}</ui-text>
+        <div class="row nowrap">
+          <ui-switch [(ngModel)]="untrackPurge"></ui-switch>
+          <span>Also delete the chat history and .zcoms file (anything else you put in the folder is kept)</span>
+        </div>
+      </div>
+      <div modal-footer class="row-actions">
+        <ui-button variant="ghost" (click)="untrackOpen.set(false)">Cancel</ui-button>
+        <ui-button variant="destructive" [disabled]="saving()" (click)="untrack()">Stop tracking</ui-button>
       </div>
     </ui-modal>
 
@@ -345,7 +374,7 @@ export class GroupsPage {
   platformFilters: Option[] = [{ label: 'All platforms', value: '' }, ...PLATFORMS];
   kindFilters: Option[] = [
     { label: 'Any kind', value: '' }, { label: 'Off', value: 'off' },
-    { label: 'General', value: 'general' }, { label: 'Project', value: 'project' },
+    { label: 'General', value: 'general' }, { label: 'Tasks', value: 'tasks' }, { label: 'Project', value: 'project' },
   ];
   taskFilters: Option[] = [{ label: 'Open', value: 'open' }, { label: 'Done', value: 'done' }, { label: 'Dropped', value: 'dropped' }];
 
@@ -367,7 +396,7 @@ export class GroupsPage {
     const p = this.platformSig(), k = this.kindSig(), q = this.searchSig().trim().toLowerCase();
     return this.groups().filter(g =>
       (!p || g.transport === p) && (!k || g.kind === k) &&
-      (!q || (g.name || '').toLowerCase().includes(q) || g.native_id.includes(q) || (g.project_path || '').toLowerCase().includes(q)));
+      (!q || (g.name || '').toLowerCase().includes(q) || g.native_id.includes(q) || (g.folder || g.project_path || '').toLowerCase().includes(q)));
   });
   transportErrors = computed(() => Object.entries(this.errors()).map(([transport, error]) => ({ transport, error })));
 
@@ -410,6 +439,9 @@ export class GroupsPage {
   memberOptions = computed(() => (this.detail()?.members || []).filter(m => m.active).map(m => ({ label: m.name, value: m.name })));
   unbindOpen = signal(false);
   purge = false;
+  untrackOpen = signal(false);
+  untrackTarget = signal<GroupRow | null>(null);
+  untrackPurge = false;
   replyOpen = signal(false);
   replyTitle = signal('');
   replyText = signal('');
@@ -444,6 +476,40 @@ export class GroupsPage {
       await this.load();
     } catch (e: any) { this.toast.danger(e.message, 'Change failed'); await this.load(); }
     finally { this.busy.update(s => { const n = new Set(s); n.delete(k); return n; }); }
+  }
+
+  async setTrack(g: GroupRow, on: boolean) {
+    if (!on) {
+      this.untrackTarget.set(g);
+      this.untrackPurge = false;
+      this.untrackOpen.set(true);
+      return;
+    }
+    await this.track(g, true, false);
+  }
+
+  async untrack() {
+    const g = this.untrackTarget();
+    if (!g) return;
+    this.saving.set(true);
+    try {
+      if (await this.track(g, false, this.untrackPurge)) this.untrackOpen.set(false);
+    } finally { this.saving.set(false); }
+  }
+
+  private async track(g: GroupRow, on: boolean, purge: boolean): Promise<boolean> {
+    const k = this.key(g);
+    this.busy.update(s => new Set(s).add(k));
+    try {
+      const res: any = await this.api.post('/api/groups/track', { transport: g.transport, native_id: g.native_id, on, purge });
+      this.toast.success(res?.reply || (on ? 'Tracking tasks' : 'Stopped tracking'));
+      this.projectsLoaded = false;
+      return true;
+    } catch (e: any) { this.toast.danger(e.message, 'Change failed'); return false; }
+    finally {
+      this.busy.update(s => { const n = new Set(s); n.delete(k); return n; });
+      await this.load();
+    }
   }
 
   pick() {
