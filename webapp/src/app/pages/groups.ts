@@ -121,18 +121,16 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
               </div>
 
               <div class="setting">
-                <div class="row nowrap">
-                  @if (g.kind === 'project' && !g.tracked) {
-                    <ui-switch [ngModel]="false" [disabled]="true"></ui-switch>
-                  } @else {
-                    <ui-switch [ngModel]="!!g.tracked" (ngModelChange)="setTrack(g, $event)" [disabled]="busy()"></ui-switch>
-                  }
+                @if (g.kind === 'project') {
                   <b>Track tasks</b>
-                </div>
-                <ui-text variant="caption" class="muted">
-                  @if (g.kind === 'project' && !g.tracked) { This group was given its folder directly; use Follow tasks for the standup. }
-                  @else { Gives the group a folder under groups_dir, follows its tasks and posts a standup at 09:00. }
-                </ui-text>
+                  <ui-text variant="caption" class="muted">This folder holds a repo, so the group stays a project group. Use Follow tasks below to turn the standup and task tracking on or off.</ui-text>
+                } @else {
+                  <div class="row nowrap">
+                    <ui-switch [ngModel]="!!g.tracked" (ngModelChange)="setTrack(g, $event)" [disabled]="busy()"></ui-switch>
+                    <b>Track tasks</b>
+                  </div>
+                  <ui-text variant="caption" class="muted">Gives the group a folder under groups_dir, follows its tasks and posts a standup at 09:00. Put a repo in that folder and it becomes a project group.</ui-text>
+                }
                 @if (untrackAsk()) {
                   <div class="confirm stack">
                     <ui-text variant="body">Stop tracking tasks? The standup stops and the agent stops storing messages. A group that was general goes back to general; otherwise it is turned off.</ui-text>

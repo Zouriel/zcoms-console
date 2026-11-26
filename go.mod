@@ -4,7 +4,7 @@ go 1.25.12
 
 require (
 	github.com/Zouriel/zcoms v1.6.0
-	github.com/Zouriel/zcoms-agent v1.17.0
+	github.com/Zouriel/zcoms-agent v1.17.1
 	golang.org/x/crypto v0.53.0
 )
 

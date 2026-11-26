@@ -1,7 +1,7 @@
 github.com/Zouriel/zcoms v1.6.0 h1:VJ8FXgbWq8OiREThfjtpa/8Dv1ECps8LsOFGPK5dB9Y=
 github.com/Zouriel/zcoms v1.6.0/go.mod h1:jcWRRZcWT/amKkaDtwvS3M7D2V8C4wL0pQsk1EcBf00=
-github.com/Zouriel/zcoms-agent v1.17.0 h1:1Z3gmIaRYv5sgNNNxqjAM9labb/by4urj8/6+xPD778=
-github.com/Zouriel/zcoms-agent v1.17.0/go.mod h1:ij3NvpuJ4gEzNfdTT8rN0Eudqtt/s+B9Jgyoj28B5ZQ=
+github.com/Zouriel/zcoms-agent v1.17.1 h1:6c+z1bB5skNh/FmFJt1zm1ZX4L+VBaWkLlEpG4qZsxw=
+github.com/Zouriel/zcoms-agent v1.17.1/go.mod h1:ij3NvpuJ4gEzNfdTT8rN0Eudqtt/s+B9Jgyoj28B5ZQ=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e h1:MRM5ITcdelLK2j1vwZ3Je0FKVCfqOLp5zO6trqMLYs0=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e/go.mod h1:XV66xRDqSt+GTGFMVlhk3ULuV0y9ZmzeVGR4mloJI3M=
 golang.org/x/crypto v0.53.0 h1:QZ4Muo8THX6CizN2vPPd5fBGHyogrdK9fG4wLPFUsto=
