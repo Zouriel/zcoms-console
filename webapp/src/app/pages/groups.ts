@@ -26,7 +26,7 @@ interface Project { id: number; path: string; transport: string; native_id: stri
 interface Member { id: number; name: string; transport: string; platform_id: string; active: boolean; aliases?: string[]; }
 interface Task { id: number; title: string; assignee?: string; status: string; created_at: string; }
 interface Summary { date: string; text: string; }
-interface Detail { project: Project; members: Member[]; open_tasks: Task[]; summaries: Summary[]; }
+interface Detail { project: Project; members: Member[]; open_tasks: Task[]; closed_tasks?: Task[]; summaries: Summary[]; }
 
 type Option = { label: string; value: string };
 type View = 'groups' | 'projects';
@@ -182,7 +182,7 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
             <ui-select [options]="taskFilters" [ngModel]="taskFilter()" (ngModelChange)="taskFilter.set($event)"></ui-select>
           </div>
           @if (taskFilter() !== 'open' && !shownTasks().length) {
-            <ui-text variant="caption" class="muted">The agent currently reports open tasks only, so closed and dropped tasks are not listed here.</ui-text>
+            <ui-text variant="caption" class="muted">No tasks with this status yet.</ui-text>
           }
           <div class="tbl-scroll"><table class="tbl">
             <thead><tr><th style="width:1%">ID</th><th>Title</th><th>Assignee</th><th style="width:1%"></th></tr></thead>
@@ -401,7 +401,7 @@ export class GroupsPage {
   detail = signal<Detail | null>(null);
   detailLoading = signal(false);
   taskFilter = signal('open');
-  shownTasks = computed(() => (this.detail()?.open_tasks || []).filter(t => (t.status || 'open') === this.taskFilter()));
+  shownTasks = computed(() => [...(this.detail()?.open_tasks || []), ...(this.detail()?.closed_tasks || [])].filter(t => (t.status || 'open') === this.taskFilter()));
   aliasDraft: Record<string, string> = {};
   standupBusy = signal(false);
   assignOpen = signal(false);
