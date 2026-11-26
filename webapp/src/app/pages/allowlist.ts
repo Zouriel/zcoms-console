@@ -7,19 +7,17 @@ import { UI } from '../core/ui';
 interface Allow { id: number; platform: string; handle: string; max_role: string; }
 interface Contact {
   id: number; name: string; aliases?: string[];
-  phone?: string; telegram?: string; whatsapp?: string; discord?: string; viber?: string;
+  phone?: string; telegram?: string; whatsapp?: string;
 }
 const ROLES = [
   { label: 'read', value: 'read' }, { label: 'confirm', value: 'confirm' },
   { label: 'edit', value: 'edit' }, { label: 'full', value: 'full' },
 ];
 // The channels an allow-list entry can target, with the fallback rule the server
-// uses (phone reaches Telegram/WhatsApp/Viber). Kept in sync with Contact.Address.
+// uses (phone reaches Telegram and WhatsApp). Kept in sync with Contact.Address.
 const CHANNELS: { key: keyof Contact; phoneFallback: boolean }[] = [
   { key: 'telegram', phoneFallback: true },
   { key: 'whatsapp', phoneFallback: true },
-  { key: 'discord', phoneFallback: false },
-  { key: 'viber', phoneFallback: true },
 ];
 
 @Component({
@@ -40,10 +38,6 @@ const CHANNELS: { key: keyof Contact; phoneFallback: boolean }[] = [
       @if (pickedChannels().length) {
         <ui-text variant="caption" class="muted" style="display:block;margin:-6px 0 14px">
           Will allow-list: {{ pickedChannels().join(', ') }}
-        </ui-text>
-      } @else {
-        <ui-text variant="caption" class="muted" style="display:block;margin:-6px 0 14px">
-          Telegram + WhatsApp are routed today; Discord/Viber are stored for when those connect.
         </ui-text>
       }
 
@@ -92,7 +86,6 @@ export class AllowlistPage {
   role = 'read';
   platforms = [
     { label: 'Telegram', value: 'telegram' }, { label: 'WhatsApp', value: 'whatsapp' },
-    { label: 'Discord', value: 'discord' }, { label: 'Viber', value: 'viber' },
   ];
 
   // Contact picker.

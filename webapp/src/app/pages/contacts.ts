@@ -12,19 +12,17 @@ interface Contact {
   email?: string;
   telegram?: string;
   whatsapp?: string;
-  discord?: string;
-  viber?: string;
   github?: string;
   note?: string;
 }
-const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: '', telegram: '', whatsapp: '', discord: '', viber: '', github: '', note: '' });
+const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: '', telegram: '', whatsapp: '', github: '', note: '' });
 
 @Component({
   selector: 'app-contacts',
   imports: [FormsModule, ...UI],
   template: `
     <div class="page-head">
-      <ui-text variant="caption" class="muted">addressing directory — a phone reaches Telegram/WhatsApp/Viber; Discord needs its own id</ui-text>
+      <ui-text variant="caption" class="muted">addressing directory: a phone reaches Telegram and WhatsApp</ui-text>
       <span class="spacer"></span>
       <ui-button variant="primary" (click)="openNew()">Add contact</ui-button>
     </div>
@@ -60,7 +58,7 @@ const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: 
         <ui-form-field label="Aliases" hint="comma-separated nicknames — must be unique across all contacts">
           <ui-input class="f" [(ngModel)]="aliasesText" placeholder="e.g. Aliyya, Ali bro"></ui-input>
         </ui-form-field>
-        <ui-form-field label="Mobile number" hint="reaches Telegram / WhatsApp / Viber">
+        <ui-form-field label="Mobile number" hint="reaches Telegram and WhatsApp">
           <ui-input class="f" [(ngModel)]="form.phone" placeholder="+960 …"></ui-input>
         </ui-form-field>
         <ui-form-field label="Email"><ui-input class="f" type="email" [(ngModel)]="form.email" placeholder="name@example.com"></ui-input></ui-form-field>
@@ -69,12 +67,6 @@ const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: 
         </ui-form-field>
         <ui-form-field label="WhatsApp" hint="id/number — else the phone is used">
           <ui-input class="f" [(ngModel)]="form.whatsapp" placeholder="defaults to phone"></ui-input>
-        </ui-form-field>
-        <ui-form-field label="Discord" hint="needs its own id — no phone fallback (not active yet)">
-          <ui-input class="f" [(ngModel)]="form.discord" placeholder="discord id"></ui-input>
-        </ui-form-field>
-        <ui-form-field label="Viber" hint="id — else the phone is used (not active yet)">
-          <ui-input class="f" [(ngModel)]="form.viber" placeholder="defaults to phone"></ui-input>
         </ui-form-field>
         <ui-form-field label="GitHub" hint="handle (contact info)">
           <ui-input class="f" [(ngModel)]="form.github" placeholder="octocat"></ui-input>

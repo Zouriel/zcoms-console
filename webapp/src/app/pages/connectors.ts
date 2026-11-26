@@ -14,15 +14,7 @@ interface Connector {
   has_qr?: boolean;
 }
 
-// Reserved transports the daemon doesn't register: shown as inert cards so the
-// roadmap is visible. Discord/Viber have no real-account API (self-bot /
-// commercial-only), so they're parked.
-const RESERVED = [
-  { transport: 'discord', label: 'Discord', note: 'No real-account API (a user token = a self-bot, ToS-bannable). Reserved.' },
-  { transport: 'viber', label: 'Viber', note: 'No real-account API (bot/commercial only). Reserved.' },
-];
-
-const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsApp', discord: 'Discord', viber: 'Viber' };
+const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsApp' };
 
 @Component({
   selector: 'app-connectors',
@@ -63,16 +55,6 @@ const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsA
           }
         </ui-card>
       }
-
-      @for (r of reserved; track r.transport) {
-        <ui-card padding="md" class="reserved">
-          <div class="conn-head">
-            <ui-text variant="h4">{{ r.label }}</ui-text>
-            <ui-badge tone="neutral">unavailable</ui-badge>
-          </div>
-          <ui-text variant="caption" class="muted" style="display:block;margin-top:6px">{{ r.note }}</ui-text>
-        </ui-card>
-      }
     </ui-grid>
 
     <ui-modal [(open)]="qrModal" [title]="'Pair ' + label(qrTransport())" size="sm">
@@ -95,7 +77,6 @@ const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsA
     .qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 8px 0; }
     .qr { background: #fff; padding: 10px; border-radius: var(--ui-radius); image-rendering: pixelated; }
     .caps { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
-    .reserved { opacity: 0.6; }
   `],
 })
 export class ConnectorsPage implements OnDestroy {
@@ -103,7 +84,6 @@ export class ConnectorsPage implements OnDestroy {
   private toast = inject(UiToastService);
   connectors = signal<Connector[]>([]);
   error = signal('');
-  reserved = RESERVED;
   qrModal = signal(false);
   qrTransport = signal('whatsapp');
   private tick = signal(0);

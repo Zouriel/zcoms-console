@@ -20,8 +20,7 @@ type connectorView struct {
 }
 
 // handleConnectors returns each registered transport's live status (telegram,
-// whatsapp, …). The page renders one card per entry plus the reserved
-// Discord/Viber slots it adds client-side.
+// whatsapp, …). The page renders one card per entry.
 func (s *Server) handleConnectors(w http.ResponseWriter, r *http.Request) {
 	cs, err := s.comms.Connectors()
 	if err != nil {
