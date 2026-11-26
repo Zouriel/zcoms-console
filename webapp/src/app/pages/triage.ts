@@ -19,7 +19,7 @@ const KINDS = [
   { label: 'Interval', value: 'interval' },
   { label: 'Daily at', value: 'daily' },
 ];
-// Transports a group can triage. Instagram lands with Phase C.
+// Transports a group can triage.
 const TRANSPORTS = ['telegram', 'whatsapp'];
 
 function blank(): Group {
@@ -56,7 +56,6 @@ function blank(): Group {
             {{ t }}
           </label>
         }
-        <span class="src disabled" title="Available in Phase C">instagram (soon)</span>
       </div>
 
       <div class="row">
@@ -97,7 +96,6 @@ function blank(): Group {
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 8px; }
     .sources { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
     .src { display: inline-flex; gap: 6px; align-items: center; text-transform: capitalize; cursor: pointer; }
-    .src.disabled { opacity: 0.45; cursor: default; }
     .row { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
     .spacer { flex: 1; }
     .actions { display: flex; gap: 6px; }

@@ -1,12 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/Zouriel/zcoms/client"
 	qrcode "github.com/skip2/go-qrcode"
@@ -26,7 +21,7 @@ type connectorView struct {
 
 // handleConnectors returns each registered transport's live status (telegram,
 // whatsapp, …). The page renders one card per entry plus the reserved
-// Discord/Viber/Instagram slots it adds client-side.
+// Discord/Viber slots it adds client-side.
 func (s *Server) handleConnectors(w http.ResponseWriter, r *http.Request) {
 	cs, err := s.comms.Connectors()
 	if err != nil {
@@ -52,50 +47,6 @@ func (s *Server) handleConnectors(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleConnectorAction(w http.ResponseWriter, r *http.Request) {
 	if err := s.comms.ConnectorAction(r.PathValue("transport"), r.PathValue("action")); err != nil {
 		writeErr(w, http.StatusBadGateway, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
-}
-
-// handleInstagramCredentials writes the Instagram account credentials the owner
-// entered on the connectors page to ~/.config/zcoms/instagram.json (mode 0600).
-// The daemon re-reads that file when the owner then triggers the "login" action,
-// so the whole login can be driven from the browser. Instagram has no OAuth, so
-// the username/password necessarily live on disk like an account-level secret.
-func (s *Server) handleInstagramCredentials(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Username    string `json:"username"`
-		Password    string `json:"password"`
-		Proxy       string `json:"proxy"`
-		PollSeconds int    `json:"poll_seconds"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeErr(w, http.StatusBadRequest, err)
-		return
-	}
-	if strings.TrimSpace(body.Username) == "" || strings.TrimSpace(body.Password) == "" {
-		writeErr(w, http.StatusBadRequest, fmt.Errorf("username and password are required"))
-		return
-	}
-	dir, err := client.DefaultAppDir()
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err)
-		return
-	}
-	if body.PollSeconds <= 0 {
-		body.PollSeconds = 45
-	}
-	out, err := json.MarshalIndent(body, "", "  ")
-	if err != nil {
-		writeErr(w, http.StatusInternalServerError, err)
-		return
-	}
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		writeErr(w, http.StatusInternalServerError, err)
-		return
-	}
-	if err := os.WriteFile(filepath.Join(dir, "instagram.json"), out, 0o600); err != nil {
-		writeErr(w, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

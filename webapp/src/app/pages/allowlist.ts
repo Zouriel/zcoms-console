@@ -7,7 +7,7 @@ import { UI } from '../core/ui';
 interface Allow { id: number; platform: string; handle: string; max_role: string; }
 interface Contact {
   id: number; name: string; aliases?: string[];
-  phone?: string; telegram?: string; whatsapp?: string; instagram?: string; discord?: string; viber?: string;
+  phone?: string; telegram?: string; whatsapp?: string; discord?: string; viber?: string;
 }
 const ROLES = [
   { label: 'read', value: 'read' }, { label: 'confirm', value: 'confirm' },
@@ -18,7 +18,6 @@ const ROLES = [
 const CHANNELS: { key: keyof Contact; phoneFallback: boolean }[] = [
   { key: 'telegram', phoneFallback: true },
   { key: 'whatsapp', phoneFallback: true },
-  { key: 'instagram', phoneFallback: false },
   { key: 'discord', phoneFallback: false },
   { key: 'viber', phoneFallback: true },
 ];
@@ -44,7 +43,7 @@ const CHANNELS: { key: keyof Contact; phoneFallback: boolean }[] = [
         </ui-text>
       } @else {
         <ui-text variant="caption" class="muted" style="display:block;margin:-6px 0 14px">
-          Telegram + WhatsApp are routed today; Instagram/Discord/Viber are stored for when those connect.
+          Telegram + WhatsApp are routed today; Discord/Viber are stored for when those connect.
         </ui-text>
       }
 
@@ -93,7 +92,7 @@ export class AllowlistPage {
   role = 'read';
   platforms = [
     { label: 'Telegram', value: 'telegram' }, { label: 'WhatsApp', value: 'whatsapp' },
-    { label: 'Instagram', value: 'instagram' }, { label: 'Discord', value: 'discord' }, { label: 'Viber', value: 'viber' },
+    { label: 'Discord', value: 'discord' }, { label: 'Viber', value: 'viber' },
   ];
 
   // Contact picker.

@@ -16,14 +16,13 @@ interface Connector {
 
 // Reserved transports the daemon doesn't register: shown as inert cards so the
 // roadmap is visible. Discord/Viber have no real-account API (self-bot /
-// commercial-only), so they're parked. Instagram is now registered (it logs in
-// via username/password + 2FA/challenge rather than a QR).
+// commercial-only), so they're parked.
 const RESERVED = [
   { transport: 'discord', label: 'Discord', note: 'No real-account API (a user token = a self-bot, ToS-bannable). Reserved.' },
   { transport: 'viber', label: 'Viber', note: 'No real-account API (bot/commercial only). Reserved.' },
 ];
 
-const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsApp', instagram: 'Instagram', discord: 'Discord', viber: 'Viber' };
+const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsApp', discord: 'Discord', viber: 'Viber' };
 
 @Component({
   selector: 'app-connectors',
@@ -52,34 +51,6 @@ const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsA
               <ui-button variant="primary" size="sm" (click)="openPairing(c.transport)">
                 {{ c.state === 'connected' ? 'Re-link' : (c.state === 'error' || c.state === 'session_expired' ? 'Retry pairing' : 'Pair ' + label(c.transport)) }}
               </ui-button>
-            </div>
-          }
-
-          @if (isInstagram(c)) {
-            <div style="margin-top:14px">
-              @if (c.state === 'action_required' && needsCode(c)) {
-                <div class="ig-code">
-                  <ui-input [(ngModel)]="igCode" placeholder="Enter the code" size="sm"></ui-input>
-                  <ui-button variant="primary" size="sm" [disabled]="busy() || !igCode.trim()" (click)="submitCode()">Submit code</ui-button>
-                </div>
-                <ui-text variant="caption" class="muted" style="display:block;margin-top:8px">
-                  Instagram sent a code (SMS / email / authenticator). Enter it to finish signing in.
-                </ui-text>
-              } @else if (c.state !== 'connected') {
-                <div class="ig-form">
-                  <ui-input [(ngModel)]="igUser" placeholder="username" size="sm" autocomplete="off"></ui-input>
-                  <ui-input [(ngModel)]="igPass" type="password" placeholder="password" size="sm" autocomplete="off"></ui-input>
-                  <ui-input [(ngModel)]="igProxy" placeholder="proxy (optional, recommended)" size="sm"></ui-input>
-                  <ui-button variant="primary" size="sm" [disabled]="busy() || !igUser.trim() || !igPass" (click)="igSaveAndLogin()">
-                    {{ c.state === 'error' || c.state === 'session_expired' ? 'Log in again' : 'Log in' }}
-                  </ui-button>
-                </div>
-                <ui-text variant="caption" class="muted" style="display:block;margin-top:8px">
-                  Unofficial private API, real ban risk. Use a secondary account, ideally behind a proxy. Credentials are stored locally (0600) in ~/.config/zcoms/instagram.json.
-                </ui-text>
-              } @else {
-                <ui-button variant="ghost" size="sm" [disabled]="busy()" (click)="igLogout()">Log out</ui-button>
-              }
             </div>
           }
 
@@ -125,8 +96,6 @@ const LABELS: Record<string, string> = { telegram: 'Telegram', whatsapp: 'WhatsA
     .qr { background: #fff; padding: 10px; border-radius: var(--ui-radius); image-rendering: pixelated; }
     .caps { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
     .reserved { opacity: 0.6; }
-    .ig-form { display: flex; flex-direction: column; gap: 8px; }
-    .ig-code { display: flex; gap: 8px; align-items: center; }
   `],
 })
 export class ConnectorsPage implements OnDestroy {
@@ -137,11 +106,6 @@ export class ConnectorsPage implements OnDestroy {
   reserved = RESERVED;
   qrModal = signal(false);
   qrTransport = signal('whatsapp');
-  igCode = '';
-  igUser = '';
-  igPass = '';
-  igProxy = '';
-  busy = signal(false);
   private tick = signal(0);
   private timer: any;
   private rearming = false;
@@ -209,57 +173,8 @@ export class ConnectorsPage implements OnDestroy {
     }
   }
 
-  // Which transports expose a QR pairing flow (Telegram is always on; Instagram
-  // uses username/password, handled separately below).
+  // Which transports expose a QR pairing flow (Telegram is always on).
   canPair(c: Connector) { return c.transport === 'whatsapp'; }
-
-  // Instagram uses a login + 2FA/challenge code flow instead of a QR.
-  isInstagram(c: Connector) { return c.transport === 'instagram'; }
-  needsCode(c: Connector) {
-    return c.detail === 'needs_2fa' || c.detail === 'needs_challenge' || c.detail === 'needs_code';
-  }
-
-  // Save the entered credentials, then trigger the login. Blank fields fall back
-  // to whatever is already stored (a plain re-login).
-  async igSaveAndLogin() {
-    const u = this.igUser.trim();
-    const p = this.igPass;
-    if (u && p) {
-      this.busy.set(true);
-      try {
-        await this.api.post('/api/connectors/instagram/credentials', { username: u, password: p, proxy: this.igProxy.trim() });
-      } catch (e: any) {
-        this.toast.danger(e.message, 'Instagram');
-        this.busy.set(false);
-        return;
-      }
-      this.busy.set(false);
-    }
-    await this.igLogin();
-    this.igPass = '';
-  }
-
-  async igLogin() { await this.igAction('login'); }
-  async igLogout() { await this.igAction('logout'); }
-  async submitCode() {
-    const code = this.igCode.trim();
-    if (!code) return;
-    await this.igAction('code_' + encodeURIComponent(code));
-    this.igCode = '';
-  }
-
-  private async igAction(action: string) {
-    if (this.busy()) return;
-    this.busy.set(true);
-    try {
-      await this.api.post(`/api/connectors/instagram/${action}`);
-      await this.load();
-    } catch (e: any) {
-      this.toast.danger(e.message, 'Instagram');
-    } finally {
-      this.busy.set(false);
-    }
-  }
 
   label(t: string) { return LABELS[t] || t; }
   qrSrc(t: string) { return `/api/connectors/${t}/qr?t=${this.tick()}`; }

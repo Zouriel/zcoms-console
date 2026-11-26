@@ -275,7 +275,7 @@ func (s *Server) handleAllowlistAdd(w http.ResponseWriter, r *http.Request) {
 // allowMsgPlatforms is the set of messaging channels an allow-list entry can
 // target, mirrored from runner.AllowPlatforms (the console can't import the
 // agent's runner). Email/GitHub/Note are contact info, not channels.
-var allowMsgPlatforms = []string{"telegram", "whatsapp", "instagram", "discord", "viber"}
+var allowMsgPlatforms = []string{"telegram", "whatsapp", "discord", "viber"}
 
 // allowPlatform validates a platform name, defaulting unknown values to telegram.
 func allowPlatform(p string) string {
@@ -301,7 +301,7 @@ func allowRole(r string) (string, bool) {
 }
 
 // handleAllowlistAddContact allow-lists a contact on *every* channel they have
-// (telegram/whatsapp/instagram/discord/viber, resolving each via Contact.Address
+// (telegram/whatsapp/discord/viber, resolving each via Contact.Address
 // with its phone fallback), at one role. Picking a person from the directory
 // beats re-typing a number or handle per platform.
 func (s *Server) handleAllowlistAddContact(w http.ResponseWriter, r *http.Request) {

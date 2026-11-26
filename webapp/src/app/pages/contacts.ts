@@ -12,13 +12,12 @@ interface Contact {
   email?: string;
   telegram?: string;
   whatsapp?: string;
-  instagram?: string;
   discord?: string;
   viber?: string;
   github?: string;
   note?: string;
 }
-const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: '', telegram: '', whatsapp: '', instagram: '', discord: '', viber: '', github: '', note: '' });
+const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: '', telegram: '', whatsapp: '', discord: '', viber: '', github: '', note: '' });
 
 @Component({
   selector: 'app-contacts',
@@ -70,9 +69,6 @@ const blank = (): Contact => ({ id: 0, name: '', aliases: [], phone: '', email: 
         </ui-form-field>
         <ui-form-field label="WhatsApp" hint="id/number — else the phone is used">
           <ui-input class="f" [(ngModel)]="form.whatsapp" placeholder="defaults to phone"></ui-input>
-        </ui-form-field>
-        <ui-form-field label="Instagram" hint="@handle — no phone fallback (not active yet)">
-          <ui-input class="f" [(ngModel)]="form.instagram" placeholder="@handle"></ui-input>
         </ui-form-field>
         <ui-form-field label="Discord" hint="needs its own id — no phone fallback (not active yet)">
           <ui-input class="f" [(ngModel)]="form.discord" placeholder="discord id"></ui-input>
