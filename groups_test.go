@@ -523,3 +523,60 @@ func TestGroupsListShowsTasksKindAndFolder(t *testing.T) {
 		t.Fatalf("row %+v", g)
 	}
 }
+
+func TestGroupMembersCarryRoles(t *testing.T) {
+	s := fakeAgent(t, map[string]string{"json group-roles telegram -100": `{"2":"write"}`})
+	fakeDaemon(t, s, func(q client.Request) client.Response {
+		return client.Response{OK: true, Members: []client.GroupMember{
+			{ID: "1", Name: "Owner", IsOwner: true}, {ID: "2", Name: "Ibu"}, {ID: "3", Name: "Sara"}, {ID: "9", Name: "Agent", IsSelf: true},
+		}}
+	})
+	rec := httptest.NewRecorder()
+	s.handleGroupMembers(rec, httptest.NewRequest(http.MethodGet, "/api/groups/members?transport=telegram&id=-100", nil))
+	var got []memberRow
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || len(got) != 4 {
+		t.Fatalf("%d %s %v", rec.Code, rec.Body, err)
+	}
+	want := map[string]string{"1": "write", "2": "write", "3": "read", "9": ""}
+	for _, m := range got {
+		if m.Role != want[m.ID] {
+			t.Errorf("member %s role %q, want %q", m.ID, m.Role, want[m.ID])
+		}
+	}
+}
+
+func TestGroupRole(t *testing.T) {
+	s, ag := fakeAgentRec(t, map[string]string{
+		`group role telegram "-100" "5550001" write`:                       "ok",
+		`group role whatsapp "1-2@g.us" "123456789@lid" read`:              "ok",
+		`group role whatsapp "1-2@g.us" "9607000001@s.whatsapp.net" write`: "ok",
+	})
+	tests := []struct {
+		name, body, wantLine string
+		code                 int
+	}{
+		{"telegram write", `{"transport":"telegram","native_id":"-100","member_id":"5550001","role":"write"}`, `group role telegram "-100" "5550001" write`, 200},
+		{"whatsapp lid read", `{"transport":"whatsapp","native_id":"1-2@g.us","member_id":"123456789@lid","role":"read"}`, `group role whatsapp "1-2@g.us" "123456789@lid" read`, 200},
+		{"whatsapp phone", `{"transport":"whatsapp","native_id":"1-2@g.us","member_id":"9607000001@s.whatsapp.net","role":"write"}`, `group role whatsapp "1-2@g.us" "9607000001@s.whatsapp.net" write`, 200},
+		{"bad role", `{"transport":"telegram","native_id":"-100","member_id":"5550001","role":"admin"}`, "", 400},
+		{"injected member", `{"transport":"telegram","native_id":"-100","member_id":"1\" write","role":"write"}`, "", 400},
+		{"wa id on telegram", `{"transport":"telegram","native_id":"-100","member_id":"1@lid","role":"write"}`, "", 400},
+		{"bad group", `{"transport":"telegram","native_id":"abc","member_id":"5550001","role":"write"}`, "", 400},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			before := ag.count()
+			rec := httptest.NewRecorder()
+			s.handleGroupRole(rec, jsonReq(http.MethodPost, "/api/groups/role", tc.body))
+			if rec.Code != tc.code {
+				t.Fatalf("status %d, want %d: %s", rec.Code, tc.code, rec.Body)
+			}
+			if tc.wantLine != "" && ag.lastLine() != tc.wantLine {
+				t.Fatalf("sent %q, want %q", ag.lastLine(), tc.wantLine)
+			}
+			if tc.wantLine == "" && ag.count() != before {
+				t.Fatal("rejected request still reached the agent")
+			}
+		})
+	}
+}

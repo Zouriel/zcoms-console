@@ -21,7 +21,7 @@ interface GroupRow {
 }
 interface GroupsView { groups: GroupRow[]; errors: Record<string, string>; }
 interface Contact { id: number; name: string; aliases?: string[]; phone?: string; telegram?: string; whatsapp?: string; }
-interface GroupMember { id: string; name: string; username?: string; is_self?: boolean; }
+interface GroupMember { id: string; name: string; username?: string; is_self?: boolean; is_owner?: boolean; role?: string; }
 interface GroupMessage { id: string; sender_name: string; text: string; kind: string; date: number; outgoing?: boolean; }
 
 interface Project { id: number; path: string; transport: string; native_id: string; group_name?: string; follow_tasks: boolean; tracked?: boolean; }
@@ -267,16 +267,28 @@ const PERSONA_KEYS = 'group,group_understand,project_standup';
     <ui-modal [(open)]="membersOpen" [title]="'Members of ' + (target()?.name || '')">
       @if (sideLoading()) { <ui-spinner></ui-spinner> } @else {
         <div class="tbl-scroll"><table class="tbl">
-          <thead><tr><th>Name</th><th>ID</th></tr></thead>
+          <thead><tr><th>Name</th><th>ID</th><th>Role</th></tr></thead>
           <tbody>
             @for (m of members(); track m.id) {
               <tr>
-                <td>{{ m.name }} @if (m.is_self) { <ui-badge tone="primary">you</ui-badge> } @if (m.username) { <div class="muted small">{{ '@' + m.username }}</div> }</td>
+                <td>{{ m.name }} @if (m.is_self) { <ui-badge tone="primary">agent</ui-badge> } @if (m.is_owner) { <ui-badge tone="success">owner</ui-badge> } @if (m.username) { <div class="muted small">{{ '@' + m.username }}</div> }</td>
                 <td class="mono muted">{{ m.id }}</td>
+                <td>
+                  @if (m.is_self) {
+                    <span class="muted small">n/a</span>
+                  } @else if (m.is_owner) {
+                    <span class="muted small">write (always)</span>
+                  } @else if (m.role) {
+                    <ui-select [options]="roleOptions" [ngModel]="m.role" (ngModelChange)="setRole(m, $event)" [disabled]="roleBusy().has(m.id)"></ui-select>
+                  } @else {
+                    <span class="muted small">unknown (agent offline)</span>
+                  }
+                </td>
               </tr>
-            } @empty { <tr><td colspan="2" class="empty">No members.</td></tr> }
+            } @empty { <tr><td colspan="3" class="empty">No members.</td></tr> }
           </tbody>
         </table></div>
+        <ui-text variant="caption" class="muted">Everyone can ask the agent to read and look things up. Write lets a member have it edit files, only in groups whose folder holds a repo and only when the workspace max_role is edit or full. You are always write.</ui-text>
       }
     </ui-modal>
 
@@ -421,6 +433,8 @@ export class GroupsPage {
   messagesOpen = signal(false);
   sideLoading = signal(false);
   members = signal<GroupMember[]>([]);
+  roleOptions: Option[] = [{ label: 'Read', value: 'read' }, { label: 'Write', value: 'write' }];
+  roleBusy = signal<Set<string>>(new Set());
   messages = signal<GroupMessage[]>([]);
 
   // Projects.
@@ -564,6 +578,20 @@ export class GroupsPage {
     try { this.members.set((await this.api.get('/api/groups/members' + this.q(g))) || []); }
     catch (e: any) { this.toast.danger(e.message, 'Could not list members'); }
     finally { this.sideLoading.set(false); }
+  }
+
+  async setRole(m: GroupMember, role: string) {
+    const g = this.target();
+    if (!g || role === m.role) return;
+    this.roleBusy.update(s => new Set(s).add(m.id));
+    try {
+      const res: any = await this.api.post('/api/groups/role', { transport: g.transport, native_id: g.native_id, member_id: m.id, role });
+      this.toast.success(res?.reply || 'Saved');
+      this.members.update(list => list.map(x => x.id === m.id ? { ...x, role } : x));
+    } catch (e: any) {
+      this.toast.danger(e.message, 'Role change failed');
+      this.members.update(list => [...list]);
+    } finally { this.roleBusy.update(s => { const n = new Set(s); n.delete(m.id); return n; }); }
   }
 
   async openMessages(g: GroupRow) {

@@ -154,6 +154,7 @@ func (s *Server) routes() http.Handler {
 	mux.HandleFunc("GET /api/groups", auth(s.handleGroupsList))
 	mux.HandleFunc("POST /api/groups/policy", auth(s.handleGroupPolicy))
 	mux.HandleFunc("POST /api/groups/track", auth(s.handleGroupTrack))
+	mux.HandleFunc("POST /api/groups/role", auth(s.handleGroupRole))
 	mux.HandleFunc("POST /api/groups/create", auth(s.handleGroupCreate))
 	mux.HandleFunc("POST /api/groups/members", auth(s.handleGroupAddMembers))
 	mux.HandleFunc("GET /api/groups/members", auth(s.handleGroupMembers))

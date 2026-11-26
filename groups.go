@@ -29,6 +29,9 @@ var groupTransports = []string{"telegram", "whatsapp"}
 var (
 	telegramGroupID = regexp.MustCompile(`^-?[0-9]{1,20}$`)
 	whatsappGroupID = regexp.MustCompile(`^[0-9-]{1,64}@g\.us$`)
+
+	telegramMemberID = regexp.MustCompile(`^[0-9]{1,20}$`)
+	whatsappMemberID = regexp.MustCompile(`^[0-9]{1,32}(:[0-9]{1,4})?@(s\.whatsapp\.net|lid)$`)
 )
 
 // groupRow is one group in the merged view. Kind is "off" when the agent has
@@ -342,7 +345,15 @@ func groupQuery(w http.ResponseWriter, r *http.Request) (string, string, bool) {
 	return tp, id, true
 }
 
-// handleGroupMembers lists a group's members.
+// memberRow is a group member with their role: "write" for the owner
+// (fixed) and members the owner promoted, "read" otherwise, "" for the
+// agent's own account or when the agent could not be asked.
+type memberRow struct {
+	client.GroupMember
+	Role string `json:"role,omitempty"`
+}
+
+// handleGroupMembers lists a group's members with their roles.
 func (s *Server) handleGroupMembers(w http.ResponseWriter, r *http.Request) {
 	tp, id, ok := groupQuery(w, r)
 	if !ok {
@@ -353,10 +364,56 @@ func (s *Server) handleGroupMembers(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadGateway, err)
 		return
 	}
-	if ms == nil {
-		ms = []client.GroupMember{}
+	roles, rerr := s.agent.GroupRoles(tp, id)
+	out := make([]memberRow, 0, len(ms))
+	for _, m := range ms {
+		row := memberRow{GroupMember: m}
+		switch {
+		case m.IsSelf:
+		case m.IsOwner:
+			row.Role = "write"
+		case rerr == nil && roles[m.ID] == "write":
+			row.Role = "write"
+		case rerr == nil:
+			row.Role = "read"
+		}
+		out = append(out, row)
 	}
-	writeJSON(w, http.StatusOK, ms)
+	writeJSON(w, http.StatusOK, out)
+}
+
+// handleGroupRole sets one member's role in a group. The agent refuses the
+// owner (always write), its own account and anyone not in the group.
+func (s *Server) handleGroupRole(w http.ResponseWriter, r *http.Request) {
+	if !requireJSON(w, r) {
+		return
+	}
+	var body struct {
+		Transport string `json:"transport"`
+		NativeID  string `json:"native_id"`
+		MemberID  string `json:"member_id"`
+		Role      string `json:"role"`
+	}
+	if !decode(w, r, &body) {
+		return
+	}
+	if err := validGroup(body.Transport, body.NativeID); err != nil {
+		writeErr(w, http.StatusBadRequest, err)
+		return
+	}
+	re := telegramMemberID
+	if body.Transport == "whatsapp" {
+		re = whatsappMemberID
+	}
+	if !re.MatchString(body.MemberID) {
+		writeErr(w, http.StatusBadRequest, errors.New("bad member id"))
+		return
+	}
+	if body.Role != "read" && body.Role != "write" {
+		writeErr(w, http.StatusBadRequest, errors.New("role must be read or write"))
+		return
+	}
+	s.agentCmd(w, "group role "+body.Transport+" "+quoteArg(body.NativeID)+" "+quoteArg(body.MemberID)+" "+body.Role)
 }
 
 // handleGroupMessages returns a group's latest 50 messages, read as the owner.
